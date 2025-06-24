@@ -177,7 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clean and validate the activity data
       const cleanData = {
         name: activityData.name?.trim(),
-        date: activityData.date,
+        date: new Date(activityData.date), // Convert string to Date object
         word_count: parseInt(activityData.wordCount) || 0,
         type: activityData.type,
         responses: activityData.responses ? parseInt(activityData.responses) : undefined,
@@ -525,6 +525,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.status(500).json({ message: error.message || "Failed to update activity" });
+    }
+  });
+
+  // Refresh user stats endpoint
+  app.post("/api/users/:id/refresh-stats", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      await storage.updateUserStats(userId);
+      const user = await storage.getUser(userId);
+      res.json({ success: true, user: { ...user, password: undefined } });
+    } catch (error: any) {
+      console.error("Error refreshing user stats:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 

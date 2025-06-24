@@ -150,7 +150,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllActivities(): Promise<Array<Activity & { user: User }>> {
-    return await db
+    const result = await db
       .select({
         id: activities.id,
         userId: activities.userId,
@@ -171,6 +171,13 @@ export class DatabaseStorage implements IStorage {
       .from(activities)
       .leftJoin(users, eq(activities.userId, users.id))
       .orderBy(desc(activities.createdAt));
+
+    return result.map(item => ({
+      ...item,
+      likesCount: 0,
+      commentsCount: 0,
+      isLiked: false,
+    }));
   }
 
   async updateUserStats(userId: number): Promise<void> {
@@ -436,13 +443,6 @@ export class DatabaseStorage implements IStorage {
     }
 
     return true;
-  }
-
-  async markNotificationAsRead(id: number): Promise<void> {
-    await db
-      .update(notifications)
-      .set({ read: true })
-      .where(eq(notifications.id, id));
   }
 
   async createNotification(data: {
