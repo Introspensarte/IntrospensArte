@@ -1,102 +1,52 @@
-
 export function calculateTraces(type: string, wordCount: number, responses?: number): number {
+  if (!type || wordCount <= 0) return 0;
+
   let baseTraces = 0;
-  let actualType = type.toLowerCase();
+  let bonusTraces = 0;
 
-  // Auto-asignación de tipos basada en conteo de palabras
-  if (wordCount > 0) {
-    if (wordCount >= 140 && wordCount <= 160) {
-      actualType = 'drabble';
-    } else if (wordCount < 100 && (actualType === 'narrativa' || actualType === 'microcuento')) {
-      actualType = 'microcuento';
-    } else if (wordCount >= 300 && actualType !== 'hilo' && actualType !== 'rol') {
-      actualType = 'narrativa';
-    }
-  }
-
-  const responseCount = responses || 0;
-
-  switch (actualType) {
-    case 'narrativa':
-      // Sistema escalable: cada 500 palabras da +100 trazos
-      if (wordCount >= 300) {
-        baseTraces = 300; // Base para las primeras 500 palabras
-        if (wordCount > 500) {
-          const extraBlocks = Math.floor((wordCount - 500) / 500);
-          baseTraces += extraBlocks * 100;
-        }
-      } else if (wordCount >= 200) {
-        // Narrativas cortas pero válidas
-        baseTraces = 200;
+  switch (type) {
+    case "narrativa":
+      // Base: 300 trazos, +100 cada 500 palabras adicionales
+      baseTraces = 300;
+      if (wordCount > 500) {
+        const extraBlocks = Math.floor((wordCount - 500) / 500);
+        baseTraces += extraBlocks * 100;
       }
       break;
-    
-    case 'microcuento':
-      if (wordCount <= 100) {
-        baseTraces = 100;
-      } else if (wordCount <= 150) {
-        baseTraces = 80; // Penalización por exceder límite pero aún válido
-      }
+    case "microcuento":
+      // ≤100 palabras = 100 trazos
+      baseTraces = wordCount <= 100 ? 100 : 0;
       break;
-    
-    case 'drabble':
-      if (wordCount >= 140 && wordCount <= 160) {
-        baseTraces = 150;
-      } else if (wordCount >= 120 && wordCount <= 180) {
-        baseTraces = 120; // Cercano al drabble perfecto
-      } else if (wordCount < 200) {
-        baseTraces = 100; // Drabble imperfecto pero válido
-      }
+    case "drabble":
+      // 140-160 palabras = 150 trazos
+      baseTraces = (wordCount >= 140 && wordCount <= 160) ? 150 : 0;
       break;
-    
-    case 'hilo':
-      // Sistema escalable para hilos: puntaje base 100, +50 cada 5 respuestas
+    case "hilo":
+      // Base: 100 trazos, +50 cada 5 respuestas extra
       baseTraces = 100;
-      if (responseCount > 5) {
-        const extraLevels = Math.floor((responseCount - 5) / 5);
-        baseTraces += extraLevels * 50;
+      if (responses && responses > 0) {
+        const extraGroups = Math.floor(responses / 5);
+        bonusTraces = extraGroups * 50;
       }
       break;
-    
-    case 'rol':
-      // Sistema escalable para roles: puntaje base 250, +150 cada 5 respuestas
+    case "rol":
+      // Base: 250 trazos, +150 cada 5 respuestas extra
       baseTraces = 250;
-      if (responseCount > 5) {
-        const extraLevels = Math.floor((responseCount - 5) / 5);
-        baseTraces += extraLevels * 150;
+      if (responses && responses > 0) {
+        const extraGroups = Math.floor(responses / 5);
+        bonusTraces = extraGroups * 150;
       }
       break;
-    
-    case 'encuesta':
-      baseTraces = 100;
-      break;
-    
-    case 'collage':
+    case "otro":
+      // Encuesta: 100, Collage: 150, Poemas: 150, Pinturas: 200, Interpretación: 200
+      // Por simplicidad, usamos 150 como promedio
       baseTraces = 150;
       break;
-    
-    case 'poemas':
-      baseTraces = 150;
-      break;
-    
-    case 'pinturas':
-      baseTraces = 200;
-      break;
-    
-    case 'interpretacion':
-      baseTraces = 200;
-      break;
-    
-    case 'otro':
     default:
-      // Dar al menos algunos trazos por el esfuerzo
-      if (wordCount > 0) {
-        baseTraces = Math.max(50, Math.floor(wordCount / 10));
-      }
-      break;
+      baseTraces = 0;
   }
 
-  return Math.max(baseTraces, 0);
+  return baseTraces + bonusTraces;
 }
 
 export function calculateBonusTraces(bonusType: string): number {

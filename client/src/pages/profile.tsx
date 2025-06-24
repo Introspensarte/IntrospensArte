@@ -158,7 +158,14 @@ export default function Profile() {
         formData.append('imagePath', imagePath);
       }
 
-      const response = await apiRequest("PUT", `/api/activities/${activityId}`, formData, false);
+      const response = await fetch(`/api/activities/${activityId}`, {
+        method: 'PUT',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
 
       return response.json();
     },

@@ -189,13 +189,6 @@ export class DatabaseStorage implements IStorage {
       const totalWords = userActivities.reduce((sum, activity) => sum + (activity.word_count || 0), 0);
       const totalActivities = userActivities.length;
 
-      console.log(`Updating stats for user ${userId}:`, {
-        totalTraces,
-        totalWords,
-        totalActivities,
-        activities: userActivities
-      });
-
       // Update user stats with current database values
       await db
         .update(users)

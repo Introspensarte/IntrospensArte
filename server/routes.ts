@@ -182,14 +182,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: activityData.type,
         responses: activityData.responses ? parseInt(activityData.responses) : undefined,
         link: activityData.link?.trim() || undefined,
-        image_path: activityData.imagePath?.trim(),
+        image_path: activityData.imagePath?.trim() || "",
         description: activityData.description?.trim(),
         arista: activityData.arista,
         album: activityData.album,
       };
 
-      // Validate using schema
-      const validatedData = insertActivitySchema.parse(cleanData);
+      // Validate using schema - make image_path optional
+      const validatedData = {
+        ...cleanData,
+        image_path: cleanData.image_path || "", // Ensure it's never undefined
+      };
 
       console.log("Validated data:", validatedData);
 
@@ -216,14 +219,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           url: "/activities"
         });
       }
-
-      // Get updated user stats after activity creation
-      const updatedUser = await storage.getUser(parseInt(userId));
-      console.log("Updated user stats:", {
-        totalTraces: updatedUser?.totalTraces,
-        totalWords: updatedUser?.totalWords,
-        totalActivities: updatedUser?.totalActivities
-      });
 
       res.json(activity);
     } catch (error: any) {
@@ -565,18 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Refresh user stats
-  app.post("/api/users/:id/refresh-stats", async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      await storage.updateUserStats(userId);
-      const updatedUser = await storage.getUser(userId);
-      res.json(updatedUser);
-    } catch (error: any) {
-      console.error("Error refreshing user stats:", error);
-      res.status(500).json({ message: "Error interno del servidor" });
-    }
-  });
+  
 
   const httpServer = createServer(app);
   return httpServer;
