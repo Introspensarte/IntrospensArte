@@ -70,26 +70,26 @@ export default function UploadActivity() {
   const createMutation = useMutation({
     mutationFn: async (data: ActivityForm) => {
       let imagePath = "";
-      
+
       // Upload image file if provided
       if (data.imageFile) {
         const formData = new FormData();
         formData.append("file", data.imageFile);
         formData.append("userId", user?.id?.toString() || "");
-        
+
         const uploadResponse = await fetch("/api/upload-image", {
           method: "POST",
           body: formData,
         });
-        
+
         if (!uploadResponse.ok) {
           throw new Error("Error al subir la imagen");
         }
-        
+
         const uploadResult = await uploadResponse.json();
         imagePath = uploadResult.imagePath;
       }
-      
+
       const response = await apiRequest("POST", "/api/activities", {
         ...data,
         userId: user?.id,
@@ -100,7 +100,16 @@ export default function UploadActivity() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update user stats if returned from API
+      if (data.user) {
+        // Assuming you have a way to update the user object in your auth context
+        // For example, if useAuth returns a function to update the user:
+        // updateUser(data.user);
+        // If the updateUser function is not available directly, you might need to:
+        queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}`] }); // Example: Invalidate user query
+      }
+
       queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rankings"] });

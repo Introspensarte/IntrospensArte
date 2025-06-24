@@ -107,7 +107,7 @@ export class DatabaseStorage implements IStorage {
   async createActivity(activityData: InsertActivity & { userId: number; traces: number }): Promise<Activity> {
     const [activity] = await db.insert(activities).values(activityData).returning();
 
-    // Update user stats
+    // Update user stats and get updated user data
     await this.updateUserStats(activityData.userId);
 
     return activity;
@@ -180,13 +180,13 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async updateUserStats(userId: number): Promise<void> {
+  async updateUserStats(userId: number): Promise<User | null> {
     try {
       // Verify user exists first
       const user = await this.getUser(userId);
       if (!user) {
         console.warn(`User ${userId} not found, skipping stats update`);
-        return;
+        return null;
       }
 
       // Get fresh data from database to ensure accuracy
@@ -203,21 +203,36 @@ export class DatabaseStorage implements IStorage {
       const totalWords = userActivities.reduce((sum, activity) => sum + (activity.word_count || 0), 0);
       const totalActivities = userActivities.length;
 
+      // Calculate rank based on traces
+      let rank = "Alma en tránsito";
+      if (totalTraces >= 5000) {
+        rank = "Arquitecto del alma";
+      } else if (totalTraces >= 2000) {
+        rank = "Escritor de introspecciones";
+      } else if (totalTraces >= 800) {
+        rank = "Narrador de atmósferas";
+      } else if (totalTraces >= 200) {
+        rank = "Voz en boceto";
+      }
+
       // Update user stats with current database values
-      await db
+      const [updatedUser] = await db
         .update(users)
         .set({
           totalTraces,
           totalWords,
           totalActivities,
+          rank,
           updatedAt: new Date(),
         })
-        .where(eq(users.id, userId));
+        .where(eq(users.id, userId))
+        .returning();
 
-      console.log(`Updated stats for user ${userId}: ${totalTraces} traces, ${totalWords} words, ${totalActivities} activities`);
+      console.log(`Updated stats for user ${userId}: ${totalTraces} traces, ${totalWords} words, ${totalActivities} activities, rank: ${rank}`);
+      return updatedUser;
     } catch (error) {
       console.error(`Error updating stats for user ${userId}:`, error);
-      // Don't throw the error to prevent cascade failures
+      return null;
     }
   }
 
@@ -404,11 +419,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateActivity(activityId: number, updates: Partial<Activity>): Promise<Activity> {
+    // Get the original activity to know the user
+    const originalActivity = await this.getActivity(activityId);
+    
     const [activity] = await db
       .update(activities)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(activities.id, activityId))
       .returning();
+
+    // Update user stats after activity update
+    if (originalActivity?.userId) {
+      await this.updateUserStats(originalActivity.userId);
+    }
+
     return activity;
   }
 

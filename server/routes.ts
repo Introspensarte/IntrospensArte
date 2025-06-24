@@ -209,18 +209,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Created activity:", activity);
 
+      // Get updated user stats
+      const updatedUser = await storage.getUser(parseInt(userId));
+
       // Notificar a todos los usuarios sobre nueva actividad
-      const user = await storage.getUser(parseInt(userId));
-      if (user) {
+      if (updatedUser) {
         await PushNotificationService.broadcastNotification({
           title: "Nueva Actividad",
-          body: `${user.signature} ha subido: ${activity.name}`,
+          body: `${updatedUser.signature} ha subido: ${activity.name}`,
           type: "new_activity",
           url: "/activities"
         });
       }
 
-      res.json(activity);
+      res.json({ 
+        activity, 
+        user: updatedUser ? { ...updatedUser, password: undefined } : null 
+      });
     } catch (error: any) {
       console.error("Activity creation error:", error);
 
@@ -510,10 +515,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         traces,
       });
 
-      // Refresh user stats
-      await storage.updateUserStats(parseInt(userId));
+      // Get updated user stats
+      const updatedUser = await storage.getUser(parseInt(userId));
 
-      res.json(updatedActivity);
+      res.json({ 
+        activity: updatedActivity, 
+        user: updatedUser ? { ...updatedUser, password: undefined } : null 
+      });
     } catch (error: any) {
       console.error("Error updating activity:", error);
 
@@ -563,10 +571,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.deleteActivity(activityId, parseInt(userId));
 
-      // Refresh user stats after deletion
-      await storage.updateUserStats(parseInt(userId));
+      // Get updated user stats
+      const updatedUser = await storage.getUser(parseInt(userId));
 
-      res.json({ success: true });
+      res.json({ 
+        success: true, 
+        user: updatedUser ? { ...updatedUser, password: undefined } : null 
+      });
     } catch (error: any) {
       console.error("Error deleting activity:", error);
       res.status(500).json({ message: error.message });

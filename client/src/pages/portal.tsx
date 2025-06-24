@@ -42,26 +42,8 @@ export default function Portal() {
     refetchOnWindowFocus: true,
   });
 
-  // Force user stats refresh when component mounts
-  useEffect(() => {
-    const refreshUserStats = async () => {
-      if (user?.id) {
-        try {
-          const response = await fetch(`/api/users/${user.id}/refresh-stats`, {
-            method: 'POST',
-          });
-          if (response.ok) {
-            const updatedUser = await response.json();
-            updateUser(updatedUser);
-          }
-        } catch (error) {
-          console.error('Error refreshing user stats:', error);
-        }
-      }
-    };
-
-    refreshUserStats();
-  }, [user?.id, updateUser]);
+  // Remove the automatic stats refresh to prevent spam
+  // Stats will be updated automatically when activities are created/edited/deleted
 
   if (!user) {
     return (

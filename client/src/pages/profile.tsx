@@ -110,13 +110,19 @@ export default function Profile() {
       const response = await apiRequest("DELETE", `/api/activities/${activityId}`, { userId: user?.id });
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+    onSuccess: (data) => {
+      // Update user stats if returned from API
+      if (data.user && updateUser) {
+        updateUser(data.user);
+      }
+
       toast({
         title: "Actividad eliminada",
         description: "La actividad ha sido eliminada exitosamente",
       });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rankings"] });
     },
     onError: (error: any) => {
       toast({
@@ -135,7 +141,7 @@ export default function Profile() {
       if (!user?.id) {
         throw new Error("Usuario no autenticado");
       }
-      
+
       formData.append('userId', user.id.toString());
       formData.append('name', data.name);
       formData.append('date', data.date);
@@ -169,14 +175,19 @@ export default function Profile() {
 
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/rankings"] });
+    onSuccess: (data) => {
+      // Update user stats if returned from API
+      if (data.user && updateUser) {
+        updateUser(data.user);
+      }
+
       toast({
         title: "Actividad actualizada",
         description: "La actividad ha sido actualizada exitosamente",
       });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rankings"] });
       setIsEditDialogOpen(false);
       setEditingActivity(null);
     },
