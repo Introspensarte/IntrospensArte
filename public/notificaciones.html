@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificaciones - Introspens/arte</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            background: linear-gradient(135deg, #000 0%, #111 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .title {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            font-weight: bold;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+        }
+        
+        .decorative-line {
+            background: linear-gradient(90deg, transparent, #cbbcff, transparent);
+            height: 1px;
+            width: 100%;
+            margin: 1.5rem 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: #cbbcff;
+        }
+        
+        .notifications-container {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .notification-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(203, 188, 255, 0.1);
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .notification-item:hover {
+            border-color: #cbbcff;
+            transform: translateY(-2px);
+        }
+        
+        .notification-item.unread {
+            border-color: #cbbcff;
+            background: rgba(203, 188, 255, 0.1);
+        }
+        
+        .notification-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .notification-content {
+            flex: 1;
+        }
+        
+        .notification-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #cbbcff;
+            margin-bottom: 0.5rem;
+        }
+        
+        .notification-message {
+            color: #fff;
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
+        }
+        
+        .notification-date {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        .notification-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .unread-indicator {
+            width: 8px;
+            height: 8px;
+            background: #cbbcff;
+            border-radius: 50%;
+        }
+        
+        .mark-read-btn {
+            padding: 0.25rem 0.5rem;
+            background: rgba(203, 188, 255, 0.2);
+            color: #cbbcff;
+            border: 1px solid rgba(203, 188, 255, 0.3);
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .mark-read-btn:hover {
+            background: rgba(203, 188, 255, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #fff;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #fff;
+            font-style: italic;
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(85, 85, 85, 0.3);
+            border: 1px solid rgba(85, 85, 85, 0.5);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(85, 85, 85, 0.5);
+            box-shadow: none;
+        }
+        
+        @media (max-width: 768px) {
+            .notification-item {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/portal.html" class="back-link">← Volver al portal</a>
+        
+        <div class="header">
+            <h1 class="title">Notificaciones</h1>
+            <div class="decorative-line"></div>
+            <p style="color: #fff; font-style: italic;">Mantente al día con las actualizaciones</p>
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-secondary" onclick="markAllAsRead()">Marcar todas como leídas</button>
+            <button class="btn" onclick="loadNotifications()">Actualizar</button>
+        </div>
+        
+        <div class="notifications-container">
+            <div id="loading" class="loading">
+                Cargando notificaciones...
+            </div>
+            
+            <div id="notifications" style="display: none;">
+                <!-- Notifications will be populated here -->
+            </div>
+            
+            <div id="empty" class="empty-state" style="display: none;">
+                No tienes notificaciones en este momento.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticación
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+            window.location.href = '/index.html';
+        }
+
+        const user = JSON.parse(userData);
+
+        // Formatear fecha
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = now - date;
+            
+            // Si es menos de 1 hora
+            if (diff < 3600000) {
+                const minutes = Math.floor(diff / 60000);
+                return minutes <= 1 ? 'Hace un momento' : `Hace ${minutes} minutos`;
+            }
+            
+            // Si es menos de 24 horas
+            if (diff < 86400000) {
+                const hours = Math.floor(diff / 3600000);
+                return `Hace ${hours} hora${hours > 1 ? 's' : ''}`;
+            }
+            
+            // Si es menos de 7 días
+            if (diff < 604800000) {
+                const days = Math.floor(diff / 86400000);
+                return `Hace ${days} día${days > 1 ? 's' : ''}`;
+            }
+            
+            // Fecha completa
+            return date.toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Obtener icono para tipo de notificación
+        function getNotificationIcon(title) {
+            if (title.includes('Bienvenido')) return '👋';
+            if (title.includes('Actividad')) return '📝';
+            if (title.includes('noticia')) return '📰';
+            if (title.includes('aviso')) return '📢';
+            if (title.includes('ranking')) return '🏆';
+            return '🔔';
+        }
+
+        // Marcar notificación como leída
+        async function markAsRead(notificationId) {
+            try {
+                await fetch(`/api/notifications/${notificationId}/read`, {
+                    method: 'PATCH'
+                });
+                loadNotifications();
+            } catch (error) {
+                console.error('Error marking notification as read:', error);
+            }
+        }
+
+        // Marcar todas como leídas
+        async function markAllAsRead() {
+            const unreadNotifications = document.querySelectorAll('.notification-item.unread');
+            
+            for (const notification of unreadNotifications) {
+                const notificationId = notification.dataset.id;
+                try {
+                    await fetch(`/api/notifications/${notificationId}/read`, {
+                        method: 'PATCH'
+                    });
+                } catch (error) {
+                    console.error('Error marking notification as read:', error);
+                }
+            }
+            
+            loadNotifications();
+        }
+
+        // Cargar notificaciones
+        async function loadNotifications() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('notifications').style.display = 'none';
+                document.getElementById('empty').style.display = 'none';
+                
+                const response = await fetch(`/api/notifications/${user.id}`);
+                const notifications = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (notifications.length === 0) {
+                    document.getElementById('empty').style.display = 'block';
+                    return;
+                }
+                
+                const notificationsContainer = document.getElementById('notifications');
+                notificationsContainer.style.display = 'block';
+                notificationsContainer.innerHTML = '';
+                
+                notifications.forEach(notification => {
+                    const notificationItem = document.createElement('div');
+                    notificationItem.className = `notification-item ${!notification.is_read ? 'unread' : ''}`;
+                    notificationItem.dataset.id = notification.id;
+                    
+                    if (!notification.is_read) {
+                        notificationItem.onclick = () => markAsRead(notification.id);
+                    }
+                    
+                    notificationItem.innerHTML = `
+                        <div class="notification-icon">
+                            ${getNotificationIcon(notification.title)}
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">${notification.title}</div>
+                            <div class="notification-message">${notification.message}</div>
+                            <div class="notification-date">${formatDate(notification.created_at)}</div>
+                        </div>
+                        <div class="notification-status">
+                            ${!notification.is_read ? `
+                                <div class="unread-indicator"></div>
+                                <button class="mark-read-btn" onclick="event.stopPropagation(); markAsRead(${notification.id})">
+                                    Marcar como leída
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    notificationsContainer.appendChild(notificationItem);
+                });
+                
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                document.getElementById('loading').innerHTML = 'Error al cargar las notificaciones. <a href="#" onclick="loadNotifications()" style="color: #cbbcff;">Reintentar</a>';
+            }
+        }
+
+        // Cargar notificaciones al iniciar
+        loadNotifications();
+    </script>
+</body>
+</html>

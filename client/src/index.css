@@ -1,0 +1,172 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 6.7%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(0, 0%, 6.7%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(0, 0%, 6.7%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(0, 0%, 0%);
+  --primary: hsl(263, 70%, 50%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(263, 70%, 50%);
+  --radius: 0.5rem;
+  
+  /* Custom colors for Introspens/arte */
+  --dark-graphite: hsl(0, 0%, 6.7%);
+  --soft-lavender: hsl(263, 70%, 85%);
+  --light-gray: hsl(0, 0%, 80%);
+  --medium-gray: hsl(0, 0%, 33%);
+}
+
+.dark {
+  --background: hsl(0, 0%, 6.7%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(0, 0%, 6.7%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(0, 0%, 6.7%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(0, 0%, 0%);
+  --primary: hsl(263, 70%, 50%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(263, 70%, 50%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .font-playfair {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer components {
+  .glow-button {
+    @apply bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 transition-all duration-300;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  }
+
+  .glow-button:hover {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.8), 0 0 40px rgba(139, 92, 246, 0.3);
+  }
+
+  .decorative-line {
+    background: linear-gradient(90deg, transparent, var(--soft-lavender), transparent);
+    height: 1px;
+    width: 100%;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+
+  .animate-glow-pulse {
+    animation: glowPulse 2s ease-in-out infinite alternate;
+  }
+
+  /* Global form styles */
+  form, .form-container {
+    background: rgba(17, 17, 17, 0.9) !important;
+    color: #fff !important;
+  }
+
+  /* Global input, textarea, select styles */
+  input, textarea, select {
+    background: rgba(0, 0, 0, 0.8) !important;
+    color: #fff !important;
+    border: 1px solid rgba(203, 188, 255, 0.3) !important;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+
+  /* Global title styles - lavender color */
+  h1, .title {
+    color: #cbbcff !important;
+  }
+
+  h2, h3, h4, h5, h6 {
+    color: #cbbcff !important;
+  }
+
+  /* Specific overrides for common title classes */
+  .title, .page-title, .section-title, .header-title {
+    color: #cbbcff !important;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes glowPulse {
+  from { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
+  to { box-shadow: 0 0 30px rgba(139, 92, 246, 0.8), 0 0 40px rgba(139, 92, 246, 0.3); }
+}
+
+/* Additional global overrides for all pages */
+* {
+  /* Ensure all forms have dark background and white text */
+  form {
+    background: rgba(17, 17, 17, 0.9) !important;
+    color: #fff !important;
+  }
+
+  /* Ensure all inputs have dark background and white text */
+  input[type="text"],
+  input[type="email"], 
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    background: rgba(0, 0, 0, 0.8) !important;
+    color: #fff !important;
+    border: 1px solid rgba(203, 188, 255, 0.3) !important;
+  }
+
+  /* Ensure all titles have lavender color */
+  h1, h2, h3, h4, h5, h6,
+  .title, .page-title, .section-title, .header-title {
+    color: #cbbcff !important;
+  }
+}

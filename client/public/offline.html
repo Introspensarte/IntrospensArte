@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sin Conexión - IntrospensArte</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Playfair Display', serif;
+      background: linear-gradient(135deg, #000 0%, #111 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    
+    .offline-container {
+      text-align: center;
+      max-width: 500px;
+      background: rgba(17, 17, 17, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(203, 188, 255, 0.2);
+      border-radius: 1rem;
+      padding: 3rem;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    }
+    
+    .offline-icon {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 2rem;
+      background: linear-gradient(135deg, #cbbcff, #a78bfa);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+    }
+    
+    .offline-title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #cbbcff;
+      margin-bottom: 1rem;
+    }
+    
+    .offline-message {
+      font-size: 1.2rem;
+      color: #b8b8b8;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    
+    .retry-button {
+      background: linear-gradient(135deg, #cbbcff, #a78bfa);
+      color: #000;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 0.5rem;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      font-family: 'Playfair Display', serif;
+    }
+    
+    .retry-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(203, 188, 255, 0.3);
+    }
+    
+    .offline-features {
+      margin-top: 2rem;
+      text-align: left;
+      color: #999;
+    }
+    
+    .offline-features h3 {
+      color: #cbbcff;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    
+    .offline-features ul {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .offline-features li {
+      margin: 0.5rem 0;
+      padding-left: 1rem;
+      position: relative;
+    }
+    
+    .offline-features li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #cbbcff;
+      font-weight: bold;
+    }
+    
+    .decorative-line {
+      background: linear-gradient(90deg, transparent, #cbbcff, transparent);
+      height: 1px;
+      width: 100%;
+      margin: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">
+      📶
+    </div>
+    
+    <h1 class="offline-title">Sin Conexión</h1>
+    
+    <div class="decorative-line"></div>
+    
+    <p class="offline-message">
+      No tienes conexión a internet en este momento, pero puedes seguir navegando por el contenido que ya has visitado.
+    </p>
+    
+    <button class="retry-button" onclick="retryConnection()">
+      Reintentar Conexión
+    </button>
+    
+    <div class="offline-features">
+      <h3>Disponible sin conexión:</h3>
+      <ul>
+        <li>Contenido previamente visitado</li>
+        <li>Tus actividades guardadas</li>
+        <li>Perfil y estadísticas</li>
+        <li>Redactar nuevas actividades (se subirán automáticamente)</li>
+        <li>Notificaciones almacenadas</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    function retryConnection() {
+      if (navigator.onLine) {
+        window.location.reload();
+      } else {
+        // Try to navigate to the main app anyway
+        window.location.href = '/';
+      }
+    }
+    
+    // Listen for online event
+    window.addEventListener('online', () => {
+      window.location.reload();
+    });
+    
+    // Auto-retry every 30 seconds
+    setInterval(() => {
+      if (navigator.onLine) {
+        window.location.reload();
+      }
+    }, 30000);
+  </script>
+</body>
+</html>

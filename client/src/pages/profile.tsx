@@ -1,0 +1,932 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { RANKS, MEDALS, ARISTAS, ACTIVITY_TYPES } from "@/lib/constants";
+import { Edit, Trash2, ExternalLink, Edit3 } from "lucide-react";
+import type { Activity } from "@shared/schema";
+
+const profileSchema = z.object({
+  fullName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  age: z.number().min(13, "Debes ser mayor de 13 años").max(120, "Edad inválida"),
+  birthday: z.string().regex(/^\d{2}\/\d{2}$/, "Formato debe ser DD/MM"),
+  facebookLink: z.string().url("Debe ser una URL válida").optional().or(z.literal("")),
+  signature: z.string().min(2, "La firma debe tener al menos 2 caracteres").startsWith("#", "La firma debe comenzar con #"),
+  role: z.string(),
+  rank: z.string(),
+  medal: z.string().optional(),
+});
+
+const activityEditSchema = z.object({
+  name: z.string().min(1, "El nombre es requerido"),
+  date: z.string().min(1, "La fecha es requerida"),
+  wordCount: z.number().min(1, "Debe tener al menos 1 palabra"),
+  type: z.string().min(1, "El tipo es requerido"),
+  responses: z.number().optional().nullable(),
+  link: z.string().url("Debe ser una URL válida").optional().or(z.literal("")).or(z.undefined()),
+  image: z.string().min(1, "La imagen es requerida"),
+  imageFile: z.any().optional(),
+  description: z.string().min(1, "La descripción es requerida"),
+  arista: z.string().min(1, "La arista es requerida"),
+  album: z.string().min(1, "El álbum es requerido"),
+});
+
+type ProfileForm = z.infer<typeof profileSchema>;
+type ActivityEditForm = z.infer<typeof activityEditSchema>;
+
+function getRankColor(rank: string) {
+  switch (rank) {
+    case "Alma en tránsito":
+      return "bg-yellow-500/20 text-yellow-400";
+    case "Voz en boceto":
+      return "bg-green-500/20 text-green-400";
+    case "Narrador de atmósferas":
+      return "bg-orange-800/20 text-orange-300";
+    case "Escritor de introspecciones":
+      return "bg-blue-500/20 text-blue-400";
+    case "Arquitecto del alma":
+      return "bg-soft-lavender/20 text-soft-lavender";
+    default:
+      return "bg-gray-500/20 text-gray-400";
+  }
+}
+
+export default function Profile() {
+  const { user, updateUser } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingActivities, setIsEditingActivities] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const { data: activities = [] } = useQuery<Activity[]>({
+    queryKey: [`/api/users/${user?.id}/activities`],
+    enabled: !!user,
+  });
+
+  const { data: recentActivities = [] } = useQuery<Activity[]>({
+    queryKey: [`/api/users/${user?.id}/activities?limit=3`],
+    enabled: !!user,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: Partial<ProfileForm>) => {
+      const response = await apiRequest("PUT", `/api/users/${user?.id}`, data);
+      return response.json();
+    },
+    onSuccess: (updatedUser) => {
+      updateUser(updatedUser);
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}`] });
+      toast({
+        title: "Perfil actualizado",
+        description: "Tus datos han sido guardados exitosamente",
+      });
+      setIsEditing(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al actualizar",
+        description: error.message || "Ha ocurrido un error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteActivityMutation = useMutation({
+    mutationFn: async (activityId: number) => {
+      const response = await apiRequest("DELETE", `/api/activities/${activityId}`, { userId: user?.id });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      toast({
+        title: "Actividad eliminada",
+        description: "La actividad ha sido eliminada exitosamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al eliminar",
+        description: error.message || "Ha ocurrido un error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateActivityMutation = useMutation({
+    mutationFn: async ({ activityId, data }: { activityId: number; data: ActivityEditForm }) => {
+      const formData = new FormData();
+
+      // Add all the activity data - make sure userId is properly set
+      if (!user?.id) {
+        throw new Error("Usuario no autenticado");
+      }
+      
+      formData.append('userId', user.id.toString());
+      formData.append('name', data.name);
+      formData.append('date', data.date);
+      formData.append('wordCount', data.wordCount.toString());
+      formData.append('type', data.type);
+      if (data.responses) formData.append('responses', data.responses.toString());
+      if (data.link) formData.append('link', data.link);
+      formData.append('description', data.description);
+      formData.append('arista', data.arista);
+      formData.append('album', data.album);
+
+      // Handle image upload
+      if (data.imageFile) {
+        formData.append('file', data.imageFile);
+      } else if (data.image && !data.image.startsWith('blob:')) {
+        // Extract filename from image path if it's an existing image
+        const imagePath = data.image.includes('/api/images/') 
+          ? data.image.split('/api/images/')[1] 
+          : data.image;
+        formData.append('imagePath', imagePath);
+      }
+
+      const response = await apiRequest("PUT", `/api/activities/${activityId}`, formData, false);
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rankings"] });
+      toast({
+        title: "Actividad actualizada",
+        description: "La actividad ha sido actualizada exitosamente",
+      });
+      setIsEditDialogOpen(false);
+      setEditingActivity(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al actualizar",
+        description: error.message || "Ha ocurrido un error",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const activityEditForm = useForm<ActivityEditForm>({
+    resolver: zodResolver(activityEditSchema),
+    defaultValues: {
+      name: "",
+      date: "",
+      wordCount: undefined,
+      type: "",
+      responses: undefined,
+      link: "",
+      image: "",
+      description: "",
+      arista: "",
+      album: "",
+    },
+  });
+
+  const form = useForm<ProfileForm>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      fullName: user?.fullName || "",
+      age: user?.age || 18,
+      birthday: user?.birthday || "",
+      facebookLink: user?.facebookLink || "",
+      signature: user?.signature || "",
+      role: user?.role || "user",
+      rank: user?.rank || "Alma en tránsito",
+      medal: user?.medal || "",
+    },
+  });
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-light-gray">Debes iniciar sesión para ver tu perfil</p>
+      </div>
+    );
+  }
+
+  const onSubmit = (data: ProfileForm) => {
+    // Only allow admin to edit certain fields
+    const updateData = user.role === "admin" 
+      ? data 
+      : {
+          fullName: data.fullName,
+          age: data.age,
+          birthday: data.birthday,
+          facebookLink: data.facebookLink,
+          // Exclude rank from non-admin updates
+        };
+
+    updateMutation.mutate(updateData);
+  };
+
+  const userMedal = MEDALS.find(m => m.rank === user.rank)?.medal;
+
+  const handleDeleteActivity = (activityId: number) => {
+    if (window.confirm("¿Estás seguro de que quieres eliminar esta actividad?")) {
+      deleteActivityMutation.mutate(activityId);
+    }
+  };
+
+  const handleEditActivity = (activity: Activity) => {
+    setEditingActivity(activity);
+    activityEditForm.reset({
+      name: activity.name,
+      date: activity.date ? new Date(activity.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      wordCount: activity.wordCount || 1,
+      type: activity.type,
+      responses: activity.responses || undefined,
+      link: activity.link || "",
+      image: activity.image_path ? `/api/images/${activity.image_path}` : "",
+      description: activity.description,
+      arista: activity.arista,
+      album: activity.album,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const onActivityEditSubmit = (data: ActivityEditForm) => {
+    if (editingActivity) {
+      updateActivityMutation.mutate({
+        activityId: editingActivity.id!,
+        data: {
+          ...data,
+          link: data.link?.trim() || undefined,
+          responses: data.responses || undefined,
+        },
+      });
+    }
+  };
+
+  const getActivityTypeColor = (type: string) => {
+    switch (type) {
+      case "narrativa":
+        return "bg-purple-500/20 text-purple-400";
+      case "microcuento":
+        return "bg-blue-500/20 text-blue-400";
+      case "drabble":
+        return "bg-green-500/20 text-green-400";
+      case "hilo":
+        return "bg-orange-500/20 text-orange-400";
+      case "rol":
+        return "bg-pink-500/20 text-pink-400";
+      case "otro":
+        return "bg-gray-500/20 text-gray-400";
+      default:
+        return "bg-medium-gray/20 text-medium-gray";
+    }
+  };
+
+  const getAristaColor = (arista: string) => {
+    switch (arista) {
+      case "introspeccion":
+        return "bg-soft-lavender/20 text-soft-lavender";
+      case "nostalgia":
+        return "bg-blue-400/20 text-blue-400";
+      case "amor":
+        return "bg-pink-400/20 text-pink-400";
+      case "fantasia":
+        return "bg-purple-400/20 text-purple-400";
+      case "misterio":
+        return "bg-yellow-400/20 text-yellow-400";
+      case "actividades-express":
+        return "bg-orange-400/20 text-orange-400";
+      default:
+        return "bg-medium-gray/20 text-medium-gray";
+    }
+  };
+
+  return (
+    <div className="min-h-screen py-20 px-6">
+      <div className="max-w-6xl mx-auto animate-slide-up pt-16">
+        <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-8">
+          {/* Profile Information */}
+          <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="font-playfair text-2xl">Mi Perfil</CardTitle>
+                <Button
+                  onClick={() => setIsEditing(!isEditing)}
+                  variant="outline"
+                  size="sm"
+                  className="border-soft-lavender/30 text-soft-lavender hover:bg-soft-lavender/10"
+                >
+                  {isEditing ? "Cancelar" : "Editar"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isEditing ? (
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-light-gray">Nombre y Apellido</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              className="bg-dark-graphite border-medium-gray/30 text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="age"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-light-gray">Edad</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                type="number"
+                                onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                className="bg-dark-graphite border-medium-gray/30 text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="birthday"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-light-gray">Cumpleaños</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="DD/MM"
+                                className="bg-dark-graphite border-medium-gray/30 text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="facebookLink"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-light-gray">Facebook</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="url"
+                              className="bg-dark-graphite border-medium-gray/30 text-white"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Admin-only fields */}
+                    {user.role === "admin" && (
+                      <FormField
+                        control={form.control}
+                        name="signature"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-light-gray">Firma</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                className="bg-dark-graphite border-medium-gray/30 text-white"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {/* Rank field - only editable by admins */}
+                    <FormField
+                      control={form.control}
+                      name="rank"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-light-gray">Rango</FormLabel>
+                          {user.role === "admin" ? (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-dark-graphite border-medium-gray/30 text-white">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {RANKS.map((rank) => (
+                                  <SelectItem key={rank} value={rank}>
+                                    {rank}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              value={field.value}
+                              disabled
+                              className="bg-medium-gray/20 border-medium-gray/30 text-medium-gray cursor-not-allowed"
+                            />
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button
+                      type="submit"
+                      disabled={updateMutation.isPending}
+                      className="w-full glow-button"
+                    >
+                      {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
+                    </Button>
+                  </form>
+                </Form>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">{user.fullName}</h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="bg-soft-lavender/20 text-soft-lavender">
+                        {user.signature}
+                      </Badge>
+                      {user.role === "admin" && (
+                        <Badge variant="destructive" className="bg-yellow-500/50 text-yellow-300">
+                          Admin
+                        </Badge>
+                      )}
+                      <Badge className={getRankColor(user.rank)}>{user.rank}</Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <p><span className="text-light-gray">Edad:</span> {user.age} años</p>
+                    <p><span className="text-light-gray">Cumpleaños:</span> {user.birthday}</p>
+                    <p><span className="text-light-gray">Rango:</span> {user.rank}</p>
+                    {userMedal && (
+                      <p><span className="text-light-gray">Medalla:</span> {userMedal}</p>
+                    )}
+                    {user.facebookLink && (
+                      <p>
+                        <span className="text-light-gray">Facebook:</span>{" "}
+                        <a 
+                          href={user.facebookLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-soft-lavender hover:text-white transition-colors"
+                        >
+                          Ver perfil
+                        </a>
+                      </p>
+                    )}
+                    <p>
+                      <span className="text-light-gray">Miembro desde:</span>{" "}
+                      {new Date(user.createdAt!).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Statistics */}
+          <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
+            <CardHeader>
+              <CardTitle className="font-playfair text-2xl">Estadísticas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-soft-lavender">{user.totalTraces}</div>
+                  <div className="text-sm text-light-gray">Trazos totales</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-soft-lavender">{user.totalWords}</div>
+                  <div className="text-sm text-light-gray">Palabras</div>
+                </div>
+              </div>
+
+              <div className="text-center mb-6">
+                <div className="text-2xl font-bold text-soft-lavender">{user.totalActivities}</div>
+                <div className="text-sm text-light-gray">Actividades realizadas</div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-white mb-3">Últimas actividades</h4>
+                <div className="space-y-2">
+                  {recentActivities.length > 0 ? (
+                    recentActivities.map((activity) => (
+                      <div key={activity.id} className="p-3 bg-medium-gray/10 rounded-lg">
+                        <div className="font-medium text-white">{activity.name}</div>
+                        <div className="text-sm text-light-gray">
+                          {activity.type} • {activity.wordCount} palabras • {activity.traces} trazos
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-medium-gray text-sm">No hay actividades aún</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* My Activities */}
+          <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-1">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle className="font-playfair text-2xl">Mis Actividades</CardTitle>
+                <Button
+                  onClick={() => setIsEditingActivities(!isEditingActivities)}
+                  variant="outline"
+                  size="sm"
+                  className="border-soft-lavender/30 text-soft-lavender hover:bg-soft-lavender/10"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="max-h-96 overflow-y-auto">
+              {activities.length > 0 ? (
+                <div className="space-y-3">
+                  {activities.map((activity) => (
+                    <div key={activity.id} className="p-3 bg-medium-gray/10 rounded-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-white text-sm mb-1">{activity.name}</h4>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            <Badge className={getActivityTypeColor(activity.type)}>
+                              {activity.type}
+                            </Badge>
+                            <Badge className={getAristaColor(activity.arista)}>
+                              {activity.arista.replace('-', ' ')}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-light-gray space-y-1">
+                            <p><span className="text-medium-gray">Álbum:</span> {activity.album}</p>
+                            <p><span className="text-medium-gray">Palabras:</span> {activity.wordCount} • <span className="text-medium-gray">Trazos:</span> {activity.traces}</p>
+                            <p><span className="text-medium-gray">Fecha:</span> {new Date(activity.date).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        {isEditingActivities && (
+                          <div className="flex flex-col gap-1 ml-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditActivity(activity)}
+                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-1 h-auto"
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteActivity(activity.id!)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-auto"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      {activity.link && (
+                        <a
+                          href={activity.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Ver actividad
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-medium-gray text-sm">No tienes actividades aún</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Activity Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-black/95 border-medium-gray/30">
+            <DialogHeader>
+              <DialogTitle className="font-playfair text-2xl text-white">
+                Editar Actividad
+              </DialogTitle>
+            </DialogHeader>
+
+            <Form {...activityEditForm}>
+              <form onSubmit={activityEditForm.handleSubmit(onActivityEditSubmit)} className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <FormField
+                    control={activityEditForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-light-gray">Nombre de la actividad</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="Título de tu obra"
+                            className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={activityEditForm.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-light-gray">Fecha</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="date"
+                            className="bg-dark-graphite border-medium-gray/30 text-white focus:border-soft-lavender"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <FormField
+                    control={activityEditForm.control}
+                    name="wordCount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-light-gray">Número de palabras</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="Ej: 500"
+                            value={field.value === undefined ? "" : field.value}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === "") {
+                                field.onChange(undefined);
+                              } else {
+                                const numValue = parseInt(value);
+                                field.onChange(isNaN(numValue) ? undefined : numValue);
+                              }
+                            }}
+                            className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={activityEditForm.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-light-gray">Tipo</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-dark-graphite border-medium-gray/30 text-white focus:border-soft-lavender">
+                              <SelectValue placeholder="Selecciona un tipo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {ACTIVITY_TYPES.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {(activityEditForm.watch("type") === "hilo" || activityEditForm.watch("type") === "rol") && (
+                  <FormField
+                    control={activityEditForm.control}
+                    name="responses"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-light-gray">Respuestas (si aplica)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="Número de respuestas"
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                            className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={activityEditForm.control}
+                  name="link"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-light-gray">Link (opcional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="url"
+                          placeholder="https://enlace-a-tu-obra.com"
+                          className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                        control={activityEditForm.control}
+                        name="image"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-light-gray">Imagen de la actividad *</FormLabel>
+                            <FormControl>
+                              <div className="space-y-2">
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      // Store file for upload
+                                      activityEditForm.setValue("imageFile", file);
+                                      // Create preview URL
+                                      const previewUrl = URL.createObjectURL(file);
+                                      field.onChange(previewUrl);
+                                    }
+                                  }}
+                                  className="bg-dark-graphite border-medium-gray/30 text-white file:bg-soft-lavender file:text-black file:border-0 file:rounded file:px-3 file:py-1 file:mr-3 hover:file:bg-soft-lavender/80"
+                                />
+                                {field.value && (
+                                  <div className="mt-2">
+                                    <img 
+                                      src={field.value.startsWith('blob:') ? field.value : `/api/images/${field.value}`} 
+                                      alt="Vista previa" 
+                                      className="w-32 h-32 object-cover rounded border border-medium-gray/30"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                            <div className="text-xs text-medium-gray mt-1">
+                              <p>Sube una nueva imagen o mantén la actual</p>
+                              <p>Tamaño máximo: 10MB</p>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <FormField
+                    control={activityEditForm.control}
+                    name="arista"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-light-gray">Arista</FormLabel>
+                        <Select onValueChange={(value) => {
+                          field.onChange(value);
+                          activityEditForm.setValue("album", "");
+                        }} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-dark-graphite border-medium-gray/30 text-white focus:border-soft-lavender">
+                              <SelectValue placeholder="Selecciona una arista" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Object.entries(ARISTAS).map(([key, arista]) => (
+                              <SelectItem key={key} value={key}>
+                                {arista.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={activityEditForm.control}
+                    name="album"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-light-gray">Álbum</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-dark-graphite border-medium-gray/30 text-white focus:border-soft-lavender">
+                              <SelectValue placeholder="Selecciona un álbum" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(activityEditForm.watch("arista") ? ARISTAS[activityEditForm.watch("arista") as keyof typeof ARISTAS]?.albums || [] : []).map((album) => (
+                              <SelectItem key={album.id} value={album.id}>
+                                {album.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={activityEditForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-light-gray">Descripción</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          placeholder="Describe tu creación..."
+                          rows={3}
+                          className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender resize-none"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={updateActivityMutation.isPending}
+                    className="flex-1 glow-button"
+                  >
+                    {updateActivityMutation.isPending ? "Guardando..." : "Guardar cambios"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsEditDialogOpen(false)}
+                    className="border-medium-gray/30 text-medium-gray hover:bg-medium-gray/10"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}

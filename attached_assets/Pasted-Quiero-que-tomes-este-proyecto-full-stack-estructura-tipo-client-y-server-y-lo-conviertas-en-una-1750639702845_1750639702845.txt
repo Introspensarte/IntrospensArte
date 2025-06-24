@@ -1,0 +1,50 @@
+Quiero que tomes este proyecto full stack (estructura tipo client/ y server/) y lo conviertas en una aplicación web desplegable en Render.
+
+Reestructura todo para que funcione como un sitio web estático + backend funcional, usando Node.js + Express, y que Render pueda servir correctamente el frontend desde una carpeta /public.
+
+Instrucciones clave:
+	1.	Mueve todos los archivos HTML, CSS, imágenes y JS del cliente a una carpeta llamada /public.
+	•	Asegúrate de que todas las páginas HTML estén ahí.
+	•	Usa app.use(express.static('public')) para que Express sirva esa carpeta.
+	•	Todos los enlaces deben funcionar como rutas directas (/login.html, /portal.html, etc.).
+	2.	No debe faltar ninguna página importante. Incluye obligatoriamente:
+	•	/index.html (inicio)
+	•	/registro.html
+	•	/login.html
+	•	/portal.html
+	•	/perfil.html
+	•	/subir-actividad.html
+	•	/noticias.html
+	•	/avisos.html
+	•	/actividades.html
+	•	/ranking-trazos.html
+	•	/ranking-palabras.html
+	•	/usuario.html
+	•	/admin.html
+	•	/notificaciones.html
+	3.	Cada formulario debe funcionar correctamente y enviar datos al backend usando rutas /api.
+	4.	El panel de admin debe estar incluido sí o sí. Aunque no haya admins aún, debe existir la página y funcionalidades backend:
+	•	Cambiar rol
+	•	Asignar trazos
+	•	Subir avisos, noticias, actividades
+	•	Cambiar rango/medalla
+	•	Panel visible solo si el usuario tiene rol 'admin'
+	5.	Debe estar conectado a PostgreSQL, usando la variable de entorno DATABASE_URL. No uses archivos locales para datos.
+	6.	Calcula trazos automáticamente en el backend según las reglas definidas.
+	7.	Incluye sistema de notificaciones básico:
+	•	Notificar al crear cuenta
+	•	Notificar al subir actividad
+	•	Notificar cuando admin publica: noticia, aviso, actividad
+	8.	Actividades por realizar deben aparecer organizadas por Aristas y Álbumes. Aunque no haya contenido, los títulos de las secciones deben estar visibles. Añade la arista “Actividades Express” además de las 5 originales.
+	9.	Diseño visual obligatorio:
+	•	Fondo: negro absoluto (#000) o gris oscuro (#111)
+	•	Colores: lavanda suave #cbbcff, blanco #fff, gris claro #ccc, dorado pálido #e0c074
+	•	Fuente: Playfair Display o EB Garamond
+	•	Botón “Ingresa al proyecto” debe brillar y ser morado
+	•	Botón de login debe ser gris
+	•	Estilo tipo Carrd: limpio, minimalista, con efecto blur opcional
+	•	Diseño responsive para celulares y escritorio
+	•	Menús adaptables y estéticos
+	•	Título en /index.html debe decir “Introspens/arte”
+	•	Banner en /portal.html debe decir “IntrospensArte”
+	10.	Toda la app debe correr con node server.js y tener package.json correctamente configurado para producción.

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal - Introspens/arte</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            background: linear-gradient(135deg, #000 0%, #111 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .welcome {
+            margin-bottom: 2rem;
+        }
+        
+        .welcome h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .user-badges {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .badge-signature {
+            background: rgba(203, 188, 255, 0.2);
+            color: #cbbcff;
+        }
+        
+        .badge-admin {
+            background: rgba(139, 69, 19, 0.5);
+            color: #ddd6fe;
+        }
+        
+        .title {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: bold;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+        }
+        
+        .decorative-line {
+            background: linear-gradient(90deg, transparent, #cbbcff, transparent);
+            height: 1px;
+            width: 100%;
+            margin: 1.5rem 0;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(85, 85, 85, 0.3);
+            color: #fff;
+            border: 1px solid rgba(85, 85, 85, 0.5);
+            border-radius: 0.5rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(85, 85, 85, 0.5);
+            color: white;
+        }
+        
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .menu-card {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .menu-card:hover {
+            transform: translateY(-5px);
+            border-color: #cbbcff;
+            box-shadow: 0 10px 30px rgba(203, 188, 255, 0.2);
+        }
+        
+        .menu-icon {
+            width: 3rem;
+            height: 3rem;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .menu-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #cbbcff;
+            margin-bottom: 0.5rem;
+        }
+        
+        .menu-description {
+            color: #fff;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .profile-summary {
+            margin-bottom: 3rem;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #cbbcff;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .profile-card {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .profile-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex: 1;
+        }
+        
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        .user-basic {
+            flex: 1;
+        }
+        
+        .user-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .user-signature {
+            color: #cbbcff;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .user-badges {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .badge-role {
+            background: rgba(203, 188, 255, 0.2);
+            color: #cbbcff;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .badge-rank {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        
+        /* Rank Colors */
+        .rank-principiante {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+            border: 1px solid rgba(156, 163, 175, 0.3);
+        }
+        
+        .rank-aprendiz {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .rank-artesano {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .rank-experto {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+        
+        .rank-maestro {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        
+        .rank-leyenda {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(234, 179, 8, 0.3));
+            color: #fbbf24;
+            border: 1px solid rgba(234, 179, 8, 0.5);
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+        }
+        
+        .profile-stats {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #cbbcff;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 0.25rem;
+        }
+        
+        @media (max-width: 768px) {
+            .logout-btn {
+                position: static;
+                margin-bottom: 2rem;
+                display: block;
+                text-align: center;
+            }
+            
+            .menu-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .profile-card {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .profile-left {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .profile-stats {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="#" onclick="logout()" class="logout-btn">Cerrar sesión</a>
+        
+        <div class="profile-summary">
+            <h2 class="section-title">Tu Perfil</h2>
+            <div class="profile-card">
+                <div class="profile-left">
+                    <div class="user-avatar">👤</div>
+                    <div class="user-basic">
+                        <div class="user-name" id="userName">Usuario</div>
+                        <div class="user-signature" id="userSignature">#FIRMA</div>
+                        <div class="user-badges">
+                            <span class="badge badge-role" id="userRole">Usuario</span>
+                            <span class="badge badge-rank" id="userRank">Principiante</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-stats">
+                    <div class="stat">
+                        <div class="stat-value" id="userTraces">0</div>
+                        <div class="stat-label">Trazos</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="userWords">0</div>
+                        <div class="stat-label">Palabras</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="userActivities">0</div>
+                        <div class="stat-label">Actividades</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="header">
+            <h1 class="title">Portal de la Comunidad</h1>
+            <div class="decorative-line"></div>
+            <p style="color: #fff; font-style: italic;">Explora, crea y conecta con otros artistas</p>
+        </div>
+        
+        <div class="menu-grid">
+            <a href="/perfil.html" class="menu-card">
+                <div class="menu-icon">👤</div>
+                <h3 class="menu-title">Mi Perfil</h3>
+                <p class="menu-description">Gestiona tu información personal y configuraciones</p>
+            </a>
+            
+            <a href="/subir-actividad.html" class="menu-card">
+                <div class="menu-icon">📝</div>
+                <h3 class="menu-title">Subir Actividad</h3>
+                <p class="menu-description">Comparte tus escritos y gana trazos por tu creatividad</p>
+            </a>
+            
+            <a href="/actividades.html" class="menu-card">
+                <div class="menu-icon">📚</div>
+                <h3 class="menu-title">Actividades</h3>
+                <p class="menu-description">Explora las actividades realizadas por la comunidad</p>
+            </a>
+            
+            <a href="/ranking-trazos.html" class="menu-card">
+                <div class="menu-icon">🏆</div>
+                <h3 class="menu-title">Ranking Trazos</h3>
+                <p class="menu-description">Descubre quiénes lideran en creatividad</p>
+            </a>
+            
+            <a href="/ranking-palabras.html" class="menu-card">
+                <div class="menu-icon">🎯</div>
+                <h3 class="menu-title">Ranking Palabras</h3>
+                <p class="menu-description">Ve quiénes han escrito más palabras</p>
+            </a>
+            
+            <a href="/noticias.html" class="menu-card">
+                <div class="menu-icon">📰</div>
+                <h3 class="menu-title">Noticias</h3>
+                <p class="menu-description">Mantente al día con las novedades de la comunidad</p>
+            </a>
+            
+            <a href="/avisos.html" class="menu-card">
+                <div class="menu-icon">📢</div>
+                <h3 class="menu-title">Avisos</h3>
+                <p class="menu-description">Información importante y anuncios oficiales</p>
+            </a>
+            
+            <a href="/notificaciones.html" class="menu-card">
+                <div class="menu-icon">🔔</div>
+                <h3 class="menu-title">Notificaciones</h3>
+                <p class="menu-description">Revisa tus notificaciones y actualizaciones</p>
+            </a>
+            
+            <a href="/admin.html" class="menu-card" id="adminCard" style="display: none;">
+                <div class="menu-icon">⚙️</div>
+                <h3 class="menu-title">Panel Admin</h3>
+                <p class="menu-description">Gestiona usuarios, contenido y configuraciones</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticación y cargar datos del usuario
+        function getRankClass(rank) {
+            if (!rank) return 'rank-principiante';
+            return 'rank-' + rank.toLowerCase().replace(/\s+/g, '');
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            const userData = localStorage.getItem('user');
+            
+            if (!userData) {
+                window.location.href = '/index.html';
+                return;
+            }
+            
+            const user = JSON.parse(userData);
+            
+            // Actualizar perfil resumen
+            document.getElementById('userName').textContent = user.fullName || 'Usuario';
+            document.getElementById('userSignature').textContent = user.signature || '#FIRMA';
+            
+            // Rol y rango con colores
+            document.getElementById('userRole').textContent = user.role === 'admin' ? 'Administrador' : 'Usuario';
+            const rankElement = document.getElementById('userRank');
+            const rank = user.rank || 'Principiante';
+            rankElement.textContent = rank;
+            rankElement.className = 'badge badge-rank ' + getRankClass(rank);
+            
+            // Estadísticas
+            document.getElementById('userTraces').textContent = (user.totalTraces || 0).toLocaleString();
+            document.getElementById('userWords').textContent = (user.totalWords || 0).toLocaleString();
+            document.getElementById('userActivities').textContent = user.totalActivities || 0;
+            
+            // Mostrar badge de admin si corresponde
+            if (user.role === 'admin') {
+                const adminCard = document.getElementById('adminCard');
+                if (adminCard) adminCard.style.display = 'block';
+            }
+        });
+        
+        function logout() {
+            localStorage.removeItem('user');
+            window.location.href = '/index.html';
+        }
+    </script>
+</body>
+</html>

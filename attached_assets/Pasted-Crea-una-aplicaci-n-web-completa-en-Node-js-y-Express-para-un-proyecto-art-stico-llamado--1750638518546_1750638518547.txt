@@ -1,0 +1,71 @@
+Crea una aplicación web completa en Node.js y Express para un proyecto artístico llamado “𝐈𝐧𝐭𝐫𝐨𝐬𝐩𝐞𝐧𝐬/𝒂𝒓𝒕𝒆/” con diseño oscuro, minimalista y elegante inspirado en Carrd. La app debe tener el frontend separado en la carpeta /public, y todos los archivos HTML, CSS, JS e imágenes deben estar ahí. Usa app.use(express.static(‘public’)) en Express para que Render sirva correctamente el sitio.
+
+Requisitos técnicos: El backend debe usar Node.js, Express y PostgreSQL. Las credenciales de la base de datos deben ir en la variable de entorno DATABASE_URL. Usa el módulo pg para conectar a PostgreSQL. Al iniciar el servidor, crea las tablas necesarias si no existen. El archivo principal debe ser server.js con su package.json. No uses archivos locales ni JSON. Todo debe guardarse en la base de datos. Prepara todo para desplegar en Render.
+
+Frontend y diseño: Todos los archivos deben estar en /public. Fondo: negro (#000) o grafito oscuro (#111). Tipografía: Playfair Display o EB Garamond. Colores: texto blanco (#fff), detalles lavanda suave (#cbbcff), gris claro (#ccc), gris medio (#555). Botón morado brillante con glow para “Ingresa al proyecto”, botón gris para “Iniciar sesión”. Diseño profesional, limpio y poético, con sombras suaves, viñetas decorativas y transiciones animadas. Totalmente responsivo en todas las pantallas.
+
+Funcionalidades:
+	1.	“/” muestra el título “Introspens/arte”, un botón brillante morado que diga “Ingresa al proyecto” (a /registro.html) y un botón gris para “Iniciar sesión” (/login.html).
+	2.	/registro.html incluye formulario con: Nombre y Apellido, Edad, Cumpleaños (dd/mm), Face Claim, Firma (con #), ¿Por qué desea ingresar?, y Link de Facebook. Guarda usuarios en PostgreSQL. Si la firma es #INELUDIBLE, debe recibir rol “admin” automáticamente. Al registrarse, se debe generar una notificación para ese usuario.
+	3.	/login.html permite iniciar sesión con firma. Si la firma existe en la base de datos, redirige a /portal.html.
+	4.	/portal.html muestra un menú con enlaces a: Mi perfil, Noticias, Avisos, Actividades por realizar, Sube tu actividad, Ranking (Trazos), Ranking (Palabras), y Notificaciones. Si el usuario tiene rol admin, también debe mostrarse “Panel de admin” en el menú. El banner debe decir “IntrospensArte”.
+	5.	Mi perfil muestra: nombre, edad, cumpleaños, firma, link de Facebook, fecha de registro, total de trazos, palabras y actividades, y últimas 3 actividades. El usuario puede editar nombre, edad, cumpleaños y Facebook. Solo admin puede editar firma, rol, rango o medalla.
+	6.	En “Sube tu actividad”, formulario con: nombre, fecha, palabras, tipo (Narrativa, Microcuento, Drabble, Hilo, Rol, Otro), respuestas (si aplica), link, descripción, arista y álbum. El sistema debe calcular los trazos automáticamente según:
+
+Narrativa: 300–499 palabras = 300 trazos; 500–999 = 400; 1000–1499 = 500; 1500–1999 = 600. Microcuento <100 = 100 trazos. Drabble <150 = 150; <200 = 200. Hilo <5 respuestas = 100; <10 = 150. Rol <5 respuestas = 250; <10 = 400; <15 = 550; <20 = 700. Otros: Encuesta = 100; Collage = 150; Poemas = 150; Pinturas = 200; Interpretación = 200. Bonus: Cumpleaños = 100; Ingreso al proyecto = 100; Promo = 50; Primer mes = 50; Fin de bimestre = 100. Express: Prom 1 = 200; Prom 2 = 150; Prom 3 = 100; Prom 4 = 75; Prom 5 = 50.
+	7.	En “Actividades por realizar”, todos los usuarios deben poder ver, aunque no haya actividades cargadas, el listado completo de Aristas y sus respectivos Álbumes organizados por sección, de modo que puedan explorar la estructura aunque esté vacía.
+	8.	Noticias, Avisos y Actividades por realizar deben ser visibles por todos. Solo admin puede subir nuevo contenido a estas secciones. Cada vez que un admin suba una nueva actividad, aviso o noticia, se debe generar una notificación para todos los usuarios.
+	9.	Rankings: mostrar rankings globales de trazos y de palabras, ordenados de mayor a menor. Mostrar la posición del usuario actual. Debe incluir vista de perfil de otros usuarios con resumen de estadísticas y actividades.
+	10.	Sistema de roles: solo admin puede asignar rol de admin a otro usuario. Solo admin puede cambiar firmas, rangos o medallas. El usuario con firma #INELUDIBLE debe tener rol admin por defecto.
+	11.	Rango y medallas asignadas manualmente por admin:
+
+	•	Alma en tránsito – sin medalla
+	•	Voz en boceto – “Susurros que germinan”
+	•	Narrador de atmósferas – “Excelente narrador”
+	•	Escritor de introspecciones – “Lector de huellas”
+	•	Arquitecto del alma – “Arquitecto de personajes”
+
+	12.	Aristas y Álbumes:
+
+I. INVENTARIO DE LA VIDA
+	•	Inventario de Sentidos
+	•	Compras y Dilemas
+	•	Cartas desde la rutina
+	•	Chequeos y descuidos
+
+II. MAPA DEL INCONSCIENTE
+	•	Conversaciones en el tiempo
+	•	Diario de los sueños
+	•	Habitaciones sin salidas
+
+III. ECOS DEL CORAZÓN
+	•	Cicatrices invisibles
+	•	Melodías en el aire
+	•	Ternuras y traiciones
+
+IV. REFLEJOS EN EL TIEMPO
+	•	Susurros de otras vidas
+	•	Ecos del alma
+	•	Conexión espiritual
+
+V. GALERÍA DEL ALMA
+	•	Vestigios de la Moda
+	•	Obras del Ser
+	•	El reflejo de las palabras
+
+VI. ACTIVIDADES EXPRESS
+	•	Prom 1
+	•	Prom 2
+	•	Prom 3
+	•	Prom 4
+	•	Prom 5
+
+	13.	Debe haber un panel de administración accesible solo para usuarios con rol admin. El panel (/admin.html) debe permitir: editar firmas, roles, asignar trazos manuales, cambiar rangos, otorgar medallas, y subir contenido a Noticias, Avisos y Actividades por realizar (eligiendo Arista y Álbum).
+	14.	El sistema de notificaciones debe notificar a cada usuario al:
+
+	•	Registrarse por primera vez
+	•	Subirse una nueva actividad
+	•	Publicarse un nuevo aviso
+	•	Publicarse una nueva noticia
+
+Resumen final: todos los archivos del frontend van en /public, incluidos HTML, CSS y JS. Express debe estar configurado con app.use(express.static(‘public’)). El backend en Node.js debe ser compatible con Render, y la base de datos debe usarse únicamente a través de la variable DATABASE_URL. El sistema debe ser visualmente elegante, oscuro y totalmente funcional.

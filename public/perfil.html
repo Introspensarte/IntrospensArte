@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Introspens/arte</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            background: linear-gradient(135deg, #000 0%, #111 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .title {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            font-weight: bold;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+        }
+        
+        .decorative-line {
+            background: linear-gradient(90deg, transparent, #cbbcff, transparent);
+            height: 1px;
+            width: 100%;
+            margin: 1.5rem 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: #cbbcff;
+        }
+        
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+        
+        .profile-sidebar {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            height: fit-content;
+        }
+        
+        .profile-main {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .profile-name {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .profile-signature {
+            text-align: center;
+            color: #cbbcff;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .profile-badges {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .badge-role {
+            background: rgba(203, 188, 255, 0.2);
+            color: #cbbcff;
+        }
+        
+        .badge-rank {
+            background: rgba(224, 192, 116, 0.2);
+            color: #e0c074;
+        }
+        
+        .badge-medal {
+            background: rgba(139, 69, 19, 0.2);
+            color: #cd7f32;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #cbbcff;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 0.25rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #cbbcff;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            background: #000;
+            border: 1px solid rgba(203, 188, 255, 0.3);
+            border-radius: 0.5rem;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #cbbcff;
+            box-shadow: 0 0 0 2px rgba(203, 188, 255, 0.2);
+        }
+        
+        .form-control::placeholder {
+            color: #666;
+        }
+        
+        .form-control:disabled {
+            background: #222;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 2rem;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .alert-success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+        
+        .alert-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        
+        .recent-activities {
+            margin-top: 2rem;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+        }
+        
+        .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+        }
+        
+        .activity-name {
+            font-weight: 500;
+        }
+        
+        .activity-meta {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        @media (max-width: 768px) {
+            .profile-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/portal.html" class="back-link">← Volver al portal</a>
+        
+        <div class="header">
+            <h1 class="title">Mi Perfil</h1>
+            <div class="decorative-line"></div>
+            <p style="color: #fff; font-style: italic;">Gestiona tu información personal</p>
+        </div>
+        
+        <div class="profile-grid">
+            <div class="profile-sidebar">
+                <div class="profile-avatar" id="profileAvatar">👤</div>
+                <div class="profile-name" id="profileName">Usuario</div>
+                <div class="profile-signature" id="profileSignature">#FIRMA</div>
+                
+                <div class="profile-badges">
+                    <div class="badge badge-role" id="profileRole">Usuario</div>
+                    <div class="badge badge-rank" id="profileRank">Principiante</div>
+                    <div class="badge badge-medal" id="profileMedal">Bronce</div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTraces">0</div>
+                        <div class="stat-label">Trazos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statWords">0</div>
+                        <div class="stat-label">Palabras</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statActivities">0</div>
+                        <div class="stat-label">Actividades</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="profile-main">
+                <div id="alert" class="alert"></div>
+                
+                <form id="profileForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fullName">Nombre completo</label>
+                            <input type="text" id="fullName" name="fullName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="age">Edad</label>
+                            <input type="number" id="age" name="age" class="form-control" required min="13">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="birthday">Fecha de nacimiento</label>
+                        <input type="date" id="birthday" name="birthday" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="faceClaim">Face claim</label>
+                        <input type="text" id="faceClaim" name="faceClaim" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="signature">Firma única</label>
+                        <input type="text" id="signature" name="signature" class="form-control" disabled>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="motivation">Motivación</label>
+                        <textarea id="motivation" name="motivation" class="form-control" rows="4" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="facebookLink">Link de Facebook (opcional)</label>
+                        <input type="url" id="facebookLink" name="facebookLink" class="form-control">
+                    </div>
+                    
+                    <button type="submit" class="btn">Actualizar Perfil</button>
+                </form>
+                
+                <div class="recent-activities">
+                    <h3 class="section-title">Actividades Recientes</h3>
+                    <div id="recentActivities">
+                        <div style="text-align: center; padding: 2rem; color: #666;">
+                            Cargando actividades...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticación
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+            window.location.href = '/index.html';
+        }
+
+        const user = JSON.parse(userData);
+
+        // Cargar datos del perfil
+        function loadProfile() {
+            // Actualizar sidebar
+            document.getElementById('profileName').textContent = user.fullName || 'Usuario';
+            document.getElementById('profileSignature').textContent = user.signature || '#FIRMA';
+            document.getElementById('profileRole').textContent = user.role === 'admin' ? 'Administrador' : 'Usuario';
+            document.getElementById('profileRank').textContent = user.rank || 'Principiante';
+            document.getElementById('profileMedal').textContent = user.medal || 'Bronce';
+            
+            // Estadísticas
+            document.getElementById('statTraces').textContent = (user.totalTraces || 0).toLocaleString();
+            document.getElementById('statWords').textContent = (user.totalWords || 0).toLocaleString();
+            document.getElementById('statActivities').textContent = user.totalActivities || 0;
+            
+            // Formulario
+            document.getElementById('fullName').value = user.fullName || '';
+            document.getElementById('age').value = user.age || '';
+            document.getElementById('birthday').value = user.birthday || '';
+            document.getElementById('faceClaim').value = user.faceClaim || '';
+            document.getElementById('signature').value = user.signature || '';
+            document.getElementById('motivation').value = user.motivation || '';
+            document.getElementById('facebookLink').value = user.facebookLink || '';
+        }
+
+        // Cargar actividades recientes
+        async function loadRecentActivities() {
+            try {
+                const response = await fetch('/api/activities');
+                const allActivities = await response.json();
+                
+                // Filtrar actividades del usuario actual
+                const userActivities = allActivities
+                    .filter(activity => activity.user_id === user.id)
+                    .slice(0, 5);
+                
+                const container = document.getElementById('recentActivities');
+                
+                if (userActivities.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #666; font-style: italic;">No has subido actividades aún</div>';
+                    return;
+                }
+                
+                container.innerHTML = '';
+                
+                userActivities.forEach(activity => {
+                    const activityItem = document.createElement('div');
+                    activityItem.className = 'activity-item';
+                    
+                    const date = new Date(activity.date).toLocaleDateString('es-ES');
+                    
+                    activityItem.innerHTML = `
+                        <div>
+                            <div class="activity-name">${activity.name}</div>
+                            <div class="activity-meta">${activity.type} • ${activity.arista} • ${date}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: #cbbcff; font-weight: 600;">${activity.traces} trazos</div>
+                            <div style="color: #666; font-size: 0.8rem;">${activity.word_count} palabras</div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(activityItem);
+                });
+                
+            } catch (error) {
+                console.error('Error loading recent activities:', error);
+                document.getElementById('recentActivities').innerHTML = '<div style="text-align: center; padding: 2rem; color: #666;">Error al cargar actividades</div>';
+            }
+        }
+
+        // Actualizar perfil
+        document.getElementById('profileForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch(`/api/users/${user.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    const updatedUser = await response.json();
+                    
+                    // Actualizar localStorage
+                    const currentUser = JSON.parse(localStorage.getItem('user'));
+                    const newUserData = { ...currentUser, ...updatedUser };
+                    localStorage.setItem('user', JSON.stringify(newUserData));
+                    
+                    showAlert('¡Perfil actualizado exitosamente!', 'success');
+                    
+                    // Recargar datos del perfil
+                    window.location.reload();
+                } else {
+                    const result = await response.json();
+                    showAlert(result.message || 'Error al actualizar perfil', 'error');
+                }
+            } catch (error) {
+                showAlert('Error de conexión', 'error');
+            }
+        });
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        // Inicializar página
+        loadProfile();
+        loadRecentActivities();
+    </script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+
+{
+  "name": "IntrospensArte - Comunidad Artística",
+  "short_name": "IntrospensArte",
+  "description": "Portal de la comunidad artística para escritores y creadores. Comparte tu arte, participa en actividades y conecta con otros artistas.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#000000",
+  "theme_color": "#cbbcff",
+  "orientation": "portrait-primary",
+  "categories": ["entertainment", "social", "utilities", "productivity", "education"],
+  "lang": "es-ES",
+  "dir": "ltr",
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Portal principal de IntrospensArte"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Vista móvil de IntrospensArte"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Portal Principal",
+      "short_name": "Portal",
+      "description": "Accede al dashboard principal",
+      "url": "/portal",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Subir Actividad",
+      "short_name": "Subir",
+      "description": "Comparte tu nueva creación",
+      "url": "/upload",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Actividades",
+      "short_name": "Actividades",
+      "description": "Explora las creaciones de la comunidad",
+      "url": "/activities",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Rankings",
+      "short_name": "Rankings",
+      "description": "Ve las clasificaciones de trazos y palabras",
+      "url": "/rankings",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/upload",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "description",
+      "url": "link",
+      "files": [
+        {
+          "name": "file",
+          "accept": ["text/*", "image/*"]
+        }
+      ]
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "/upload",
+      "accept": {
+        "text/*": [".txt", ".md", ".doc", ".docx"],
+        "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+introspensarte",
+      "url": "/share?url=%s"
+    }
+  ],
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "navigate-new"]
+  },
+  "handle_links": "preferred",
+  "capture_links": "new-client",
+  "related_applications": [],
+  "permissions": [
+    "notifications",
+    "background-sync",
+    "periodic-background-sync"
+  ],
+  "features": [
+    "Cross Origin Embedder Policy",
+    "Service Worker",
+    "Background Sync",
+    "Periodic Background Sync",
+    "Push Notifications",
+    "Offline Support",
+    "File Handling",
+    "Share Target",
+    "Install Prompt"
+  ]
+}

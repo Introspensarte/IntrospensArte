@@ -1,0 +1,290 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Introspens/arte - Comunidad Artística</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .header {
+            padding: 2rem 0;
+            text-align: center;
+            background: rgba(203, 188, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .logo {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 20px rgba(203, 188, 255, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #e0c074;
+            font-style: italic;
+        }
+        
+        .hero {
+            padding: 4rem 0;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            color: #cbbcff;
+        }
+        
+        .hero p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            color: #cccccc;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+        
+        .btn {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Playfair Display', serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(203, 188, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(203, 188, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .features {
+            padding: 4rem 0;
+            background: rgba(203, 188, 255, 0.05);
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .feature-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .feature-card h3 {
+            color: #cbbcff;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .feature-card p {
+            color: #cccccc;
+            line-height: 1.6;
+        }
+        
+        .aristas {
+            padding: 4rem 0;
+            text-align: center;
+        }
+        
+        .aristas h2 {
+            color: #cbbcff;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+        
+        .aristas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .arista-item {
+            background: rgba(224, 192, 116, 0.1);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(224, 192, 116, 0.3);
+        }
+        
+        .arista-item h4 {
+            color: #e0c074;
+            margin-bottom: 0.5rem;
+        }
+        
+        .footer {
+            padding: 2rem 0;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            color: #888;
+        }
+        
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">Introspens/arte</div>
+            <div class="subtitle">Comunidad de Escritura Creativa</div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h1>Bienvenido a tu espacio creativo</h1>
+                <p>Una plataforma donde las palabras cobran vida, donde cada trazo cuenta una historia y donde la comunidad se convierte en inspiración. Únete a escritores de todo el mundo y comparte tu arte.</p>
+                
+                <div class="cta-buttons">
+                    <a href="/registro.html" class="btn btn-primary">Comenzar mi viaje</a>
+                    <a href="/login.html" class="btn btn-secondary">Ya tengo cuenta</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h2 style="text-align: center; color: #cbbcff; margin-bottom: 2rem; font-size: 2rem;">¿Qué hace especial a Introspens/arte?</h2>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>🎭 Sistema de Trazos</h3>
+                        <p>Cada palabra que escribes se convierte en trazos que miden tu progreso creativo. Desde narrativas hasta drabbles, cada formato tiene su valor único.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>🏆 Rankings Dinámicos</h3>
+                        <p>Compite sanamente con otros escritores en rankings de trazos y palabras. Ve tu evolución y celebra tus logros creativos.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>🎨 Seis Aristas Creativas</h3>
+                        <p>Explora diferentes dimensiones de la escritura: introspección, nostalgia, amor, fantasía, misterio y actividades express.</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h3>📰 Comunidad Activa</h3>
+                        <p>Mantente al día con noticias, avisos y notificaciones. Participa en una comunidad que valora y celebra la creatividad.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="aristas">
+            <div class="container">
+                <h2>Las Seis Aristas Creativas</h2>
+                <p style="color: #cccccc; margin-bottom: 2rem;">Cada arista representa una dimensión única de la experiencia humana a través de la escritura</p>
+                
+                <div class="aristas-grid">
+                    <div class="arista-item">
+                        <h4>Introspección</h4>
+                        <p>El mundo interior</p>
+                    </div>
+                    <div class="arista-item">
+                        <h4>Nostalgia</h4>
+                        <p>Recuerdos y melancolía</p>
+                    </div>
+                    <div class="arista-item">
+                        <h4>Amor</h4>
+                        <p>Todas las formas del amor</p>
+                    </div>
+                    <div class="arista-item">
+                        <h4>Fantasía</h4>
+                        <p>Mundos imaginarios</p>
+                    </div>
+                    <div class="arista-item">
+                        <h4>Misterio</h4>
+                        <p>Suspense y enigmas</p>
+                    </div>
+                    <div class="arista-item">
+                        <h4>Actividades Express</h4>
+                        <p>Ejercicios rápidos de escritura</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Introspens/arte. Donde cada palabra importa.</p>
+        </div>
+    </footer>
+</body>
+</html>

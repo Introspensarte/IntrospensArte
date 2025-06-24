@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actividades - Introspens/arte</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            background: linear-gradient(135deg, #000 0%, #111 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .title {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            font-weight: bold;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+        }
+        
+        .decorative-line {
+            background: linear-gradient(90deg, transparent, #cbbcff, transparent);
+            height: 1px;
+            width: 100%;
+            margin: 1.5rem 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: #cbbcff;
+        }
+        
+        .aristas-container {
+            margin-bottom: 4rem;
+        }
+        
+        .aristas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .arista-card {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .arista-card:hover {
+            transform: translateY(-5px);
+            border-color: #cbbcff;
+            box-shadow: 0 10px 30px rgba(203, 188, 255, 0.2);
+        }
+        
+        .arista-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+        }
+        
+        .arista-description {
+            color: #fff;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        
+        .activities-container {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .section-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #cbbcff;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .activity-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(203, 188, 255, 0.1);
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        
+        .activity-item:hover {
+            border-color: #cbbcff;
+            transform: translateY(-2px);
+        }
+        
+        .activity-info {
+            flex: 1;
+        }
+        
+        .activity-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #cbbcff;
+            margin-bottom: 0.5rem;
+        }
+        
+        .activity-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .activity-author {
+            color: #cbbcff;
+        }
+        
+        .activity-type {
+            background: rgba(203, 188, 255, 0.2);
+            color: #cbbcff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+        }
+        
+        .activity-arista {
+            background: rgba(224, 192, 116, 0.2);
+            color: #e0c074;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+        }
+        
+        .activity-description {
+            color: #fff;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+        
+        .activity-stats {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #cbbcff;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #999;
+        }
+        
+        .activity-link {
+            margin-left: auto;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .activity-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #fff;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #fff;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .activity-item {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .activity-meta {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .activity-stats {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/portal.html" class="back-link">← Volver al portal</a>
+        
+        <div class="header">
+            <h1 class="title">Actividades</h1>
+            <div class="decorative-line"></div>
+            <p style="color: #fff; font-style: italic;">Explora las creaciones de nuestra comunidad</p>
+        </div>
+        
+        <div class="aristas-container">
+            <h2 class="section-title">Aristas Creativas</h2>
+            <div class="aristas-grid">
+                <div class="arista-card">
+                    <h3 class="arista-title">Introspección</h3>
+                    <p class="arista-description">Exploración del mundo interior, reflexiones profundas sobre el ser</p>
+                </div>
+                <div class="arista-card">
+                    <h3 class="arista-title">Nostalgia</h3>
+                    <p class="arista-description">Remembranzas, melancolía y la belleza de los recuerdos</p>
+                </div>
+                <div class="arista-card">
+                    <h3 class="arista-title">Amor</h3>
+                    <p class="arista-description">Todas las formas del amor: romántico, fraternal, universal</p>
+                </div>
+                <div class="arista-card">
+                    <h3 class="arista-title">Fantasía</h3>
+                    <p class="arista-description">Mundos imaginarios, criaturas míticas y realidades alternativas</p>
+                </div>
+                <div class="arista-card">
+                    <h3 class="arista-title">Misterio</h3>
+                    <p class="arista-description">Enigmas, suspense y lo inexplicable que nos rodea</p>
+                </div>
+                <div class="arista-card">
+                    <h3 class="arista-title">Actividades Express</h3>
+                    <p class="arista-description">Creaciones rápidas, ejercicios de escritura y desafíos instantáneos</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="activities-container">
+            <h2 class="section-title">Actividades de la Comunidad</h2>
+            
+            <div id="loading" class="loading">
+                Cargando actividades...
+            </div>
+            
+            <div id="activities" style="display: none;">
+                <!-- Activities will be populated here -->
+            </div>
+            
+            <div id="empty" class="empty-state" style="display: none;">
+                No hay actividades publicadas en este momento.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticación
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+            window.location.href = '/index.html';
+        }
+
+        // Formatear fecha
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Cargar actividades
+        async function loadActivities() {
+            try {
+                const response = await fetch('/api/activities');
+                const activities = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (activities.length === 0) {
+                    document.getElementById('empty').style.display = 'block';
+                    return;
+                }
+                
+                const activitiesContainer = document.getElementById('activities');
+                activitiesContainer.style.display = 'block';
+                
+                activities.forEach(activity => {
+                    const activityItem = document.createElement('div');
+                    activityItem.className = 'activity-item';
+                    
+                    activityItem.innerHTML = `
+                        <div class="activity-info">
+                            <h3 class="activity-name">${activity.name}</h3>
+                            <div class="activity-meta">
+                                <span class="activity-author">Por: ${activity.full_name} (${activity.signature})</span>
+                                <span class="activity-type">${activity.type}</span>
+                                <span class="activity-arista">${activity.arista}</span>
+                                <span>Álbum: ${activity.album}</span>
+                                <span>Fecha: ${formatDate(activity.date)}</span>
+                            </div>
+                            ${activity.description ? `<div class="activity-description">${activity.description}</div>` : ''}
+                        </div>
+                        <div class="activity-stats">
+                            <div class="stat">
+                                <div class="stat-value">${activity.word_count.toLocaleString()}</div>
+                                <div class="stat-label">Palabras</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">${activity.traces}</div>
+                                <div class="stat-label">Trazos</div>
+                            </div>
+                            ${activity.responses ? `
+                            <div class="stat">
+                                <div class="stat-value">${activity.responses}</div>
+                                <div class="stat-label">Respuestas</div>
+                            </div>` : ''}
+                            ${activity.link ? `<a href="${activity.link}" target="_blank" class="activity-link">Ver obra</a>` : ''}
+                        </div>
+                    `;
+                    
+                    activitiesContainer.appendChild(activityItem);
+                });
+                
+            } catch (error) {
+                console.error('Error loading activities:', error);
+                document.getElementById('loading').innerHTML = 'Error al cargar las actividades. <a href="#" onclick="loadActivities()" style="color: #cbbcff;">Reintentar</a>';
+            }
+        }
+
+        // Cargar actividades al iniciar
+        loadActivities();
+    </script>
+</body>
+</html>

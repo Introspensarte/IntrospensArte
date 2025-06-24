@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avisos - Introspens/arte</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            background: linear-gradient(135deg, #000 0%, #111 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .title {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            font-weight: bold;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+        }
+        
+        .decorative-line {
+            background: linear-gradient(90deg, transparent, #cbbcff, transparent);
+            height: 1px;
+            width: 100%;
+            margin: 1.5rem 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: #cbbcff;
+        }
+        
+        .announcements-container {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .announcement-item {
+            padding: 2rem;
+            margin-bottom: 2rem;
+            background: rgba(139, 69, 19, 0.2);
+            border: 1px solid rgba(224, 192, 116, 0.3);
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        
+        .announcement-item:hover {
+            border-color: #e0c074;
+            transform: translateY(-2px);
+        }
+        
+        .announcement-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .announcement-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #e0c074;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .announcement-title::before {
+            content: "📢";
+            font-size: 1.2rem;
+        }
+        
+        .announcement-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .announcement-author {
+            color: #e0c074;
+        }
+        
+        .announcement-date {
+            color: #666;
+        }
+        
+        .announcement-content {
+            line-height: 1.6;
+            color: #fff;
+            white-space: pre-wrap;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #fff;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #fff;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .announcement-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/portal.html" class="back-link">← Volver al portal</a>
+        
+        <div class="header">
+            <h1 class="title">Avisos</h1>
+            <div class="decorative-line"></div>
+            <p style="color: #fff; font-style: italic;">Información importante y anuncios oficiales</p>
+        </div>
+        
+        <div class="announcements-container">
+            <div id="loading" class="loading">
+                Cargando avisos...
+            </div>
+            
+            <div id="announcements" style="display: none;">
+                <!-- Announcements will be populated here -->
+            </div>
+            
+            <div id="empty" class="empty-state" style="display: none;">
+                No hay avisos publicados en este momento.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticación
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+            window.location.href = '/index.html';
+        }
+
+        // Formatear fecha
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Cargar avisos
+        async function loadAnnouncements() {
+            try {
+                const response = await fetch('/api/announcements');
+                const announcements = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (announcements.length === 0) {
+                    document.getElementById('empty').style.display = 'block';
+                    return;
+                }
+                
+                const announcementsContainer = document.getElementById('announcements');
+                announcementsContainer.style.display = 'block';
+                
+                announcements.forEach(item => {
+                    const announcementItem = document.createElement('div');
+                    announcementItem.className = 'announcement-item';
+                    
+                    announcementItem.innerHTML = `
+                        <h2 class="announcement-title">${item.title}</h2>
+                        <div class="announcement-meta">
+                            <span class="announcement-author">Por: ${item.author_name} (${item.author_signature})</span>
+                            <span class="announcement-date">${formatDate(item.created_at)}</span>
+                        </div>
+                        <div class="announcement-content">${item.content}</div>
+                    `;
+                    
+                    announcementsContainer.appendChild(announcementItem);
+                });
+                
+            } catch (error) {
+                console.error('Error loading announcements:', error);
+                document.getElementById('loading').innerHTML = 'Error al cargar los avisos. <a href="#" onclick="loadAnnouncements()" style="color: #cbbcff;">Reintentar</a>';
+            }
+        }
+
+        // Cargar avisos al iniciar
+        loadAnnouncements();
+    </script>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuario - Introspens/arte</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Playfair Display', serif;
+            background: linear-gradient(135deg, #000 0%, #111 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .title {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            font-weight: bold;
+            color: #cbbcff;
+            margin-bottom: 1rem;
+        }
+        
+        .decorative-line {
+            background: linear-gradient(90deg, transparent, #cbbcff, transparent);
+            height: 1px;
+            width: 100%;
+            margin: 1.5rem 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #fff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: #cbbcff;
+        }
+        
+        .user-profile {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(203, 188, 255, 0.2);
+            border-radius: 1rem;
+            padding: 3rem;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        
+        .user-avatar {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 2rem;
+        }
+        
+        .user-name {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .user-signature {
+            color: #cbbcff;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .user-badges {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .badge-role {
+            background: rgba(203, 188, 255, 0.2);
+            color: #cbbcff;
+        }
+        
+        .badge-rank {
+            background: rgba(224, 192, 116, 0.2);
+            color: #e0c074;
+        }
+        
+        .badge-medal {
+            background: rgba(139, 69, 19, 0.2);
+            color: #cd7f32;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.75rem;
+            border: 1px solid rgba(203, 188, 255, 0.1);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #cbbcff;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .user-info {
+            text-align: left;
+            margin-bottom: 2rem;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+        }
+        
+        .info-label {
+            color: #cbbcff;
+            font-weight: 500;
+        }
+        
+        .info-value {
+            color: #fff;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #fff;
+        }
+        
+        .error-state {
+            text-align: center;
+            padding: 3rem;
+            color: #ef4444;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .user-badges {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .info-item {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/portal.html" class="back-link">← Volver al portal</a>
+        
+        <div class="header">
+            <h1 class="title">Perfil de Usuario</h1>
+            <div class="decorative-line"></div>
+        </div>
+        
+        <div id="loading" class="loading">
+            Cargando perfil de usuario...
+        </div>
+        
+        <div id="userProfile" style="display: none;">
+            <!-- User profile will be populated here -->
+        </div>
+        
+        <div id="error" class="error-state" style="display: none;">
+            Usuario no encontrado o error al cargar el perfil.
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticación
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+            window.location.href = '/index.html';
+        }
+
+        // Obtener ID del usuario desde la URL o usar el usuario actual
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('id');
+        const currentUser = JSON.parse(userData);
+
+        // Si no hay ID específico, mostrar el perfil del usuario actual
+        if (!userId) {
+            window.location.href = `/usuario.html?id=${currentUser.id}`;
+        }
+
+        // Formatear fecha
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Cargar perfil del usuario
+        async function loadUserProfile() {
+            try {
+                const response = await fetch('/api/users');
+                const users = await response.json();
+                
+                const user = users.find(u => u.id === parseInt(userId));
+                
+                if (!user) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error').style.display = 'block';
+                    return;
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('userProfile').style.display = 'block';
+                
+                const profileContainer = document.getElementById('userProfile');
+                
+                // Calcular edad desde fecha de nacimiento
+                let age = user.age;
+                if (user.birthday) {
+                    const birthDate = new Date(user.birthday);
+                    const today = new Date();
+                    age = today.getFullYear() - birthDate.getFullYear();
+                    const monthDiff = today.getMonth() - birthDate.getMonth();
+                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                        age--;
+                    }
+                }
+                
+                profileContainer.innerHTML = `
+                    <div class="user-profile">
+                        <div class="user-avatar">👤</div>
+                        <div class="user-name">${user.full_name}</div>
+                        <div class="user-signature">${user.signature}</div>
+                        
+                        <div class="user-badges">
+                            <div class="badge badge-role">${user.role === 'admin' ? 'Administrador' : 'Usuario'}</div>
+                            <div class="badge badge-rank">${user.rank || 'Principiante'}</div>
+                            <div class="badge badge-medal">${user.medal || 'Bronce'}</div>
+                        </div>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">${(user.total_traces || 0).toLocaleString()}</div>
+                                <div class="stat-label">Trazos</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${(user.total_words || 0).toLocaleString()}</div>
+                                <div class="stat-label">Palabras</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${user.total_activities || 0}</div>
+                                <div class="stat-label">Actividades</div>
+                            </div>
+                        </div>
+                        
+                        <div class="user-info">
+                            <div class="info-item">
+                                <span class="info-label">Edad:</span>
+                                <span class="info-value">${age} años</span>
+                            </div>
+                            ${user.birthday ? `
+                            <div class="info-item">
+                                <span class="info-label">Cumpleaños:</span>
+                                <span class="info-value">${formatDate(user.birthday)}</span>
+                            </div>` : ''}
+                            <div class="info-item">
+                                <span class="info-label">Face Claim:</span>
+                                <span class="info-value">${user.face_claim}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Motivación:</span>
+                                <span class="info-value">${user.motivation}</span>
+                            </div>
+                            ${user.facebook_link ? `
+                            <div class="info-item">
+                                <span class="info-label">Facebook:</span>
+                                <span class="info-value">
+                                    <a href="${user.facebook_link}" target="_blank" style="color: #cbbcff; text-decoration: none;">
+                                        Ver perfil
+                                    </a>
+                                </span>
+                            </div>` : ''}
+                            <div class="info-item">
+                                <span class="info-label">Miembro desde:</span>
+                                <span class="info-value">${formatDate(user.created_at)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Actualizar el título de la página
+                document.title = `${user.full_name} - Introspens/arte`;
+                
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+
+        // Cargar perfil al iniciar
+        loadUserProfile();
+    </script>
+</body>
+</html>
