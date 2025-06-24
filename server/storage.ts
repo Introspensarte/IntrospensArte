@@ -182,6 +182,13 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserStats(userId: number): Promise<void> {
     try {
+      // Verify user exists first
+      const user = await this.getUser(userId);
+      if (!user) {
+        console.warn(`User ${userId} not found, skipping stats update`);
+        return;
+      }
+
       // Get fresh data from database to ensure accuracy
       const userActivities = await db
         .select({
@@ -206,9 +213,11 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
+
+      console.log(`Updated stats for user ${userId}: ${totalTraces} traces, ${totalWords} words, ${totalActivities} activities`);
     } catch (error) {
       console.error(`Error updating stats for user ${userId}:`, error);
-      throw error;
+      // Don't throw the error to prevent cascade failures
     }
   }
 

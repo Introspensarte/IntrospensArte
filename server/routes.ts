@@ -486,7 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clean and validate the activity data
       const cleanData = {
         name: name?.trim(),
-        date: date,
+        date: date ? new Date(date) : activity.date, // Convert string to Date object
         word_count: parseInt(wordCount) || activity.word_count,
         type: type,
         responses: responses ? parseInt(responses) : undefined,
