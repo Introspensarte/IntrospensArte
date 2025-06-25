@@ -209,6 +209,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Created activity:", activity);
 
+      // Update user stats after creating activity
+      await storage.updateUserStats(parseInt(userId));
+
       // Get updated user stats
       const updatedUser = await storage.getUser(parseInt(userId));
 
@@ -515,6 +518,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         traces,
       });
 
+      // Update user stats after updating activity
+      await storage.updateUserStats(parseInt(userId));
+
       // Get updated user stats
       const updatedUser = await storage.getUser(parseInt(userId));
 
@@ -540,9 +546,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users/:id/refresh-stats", async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
+      
+      console.log(`Manual stats refresh requested for user ${userId}`);
+      
       await storage.updateUserStats(userId);
       const user = await storage.getUser(userId);
-      res.json({ success: true, user: { ...user, password: undefined } });
+      
+      console.log(`Stats refreshed for user ${userId}: ${user?.totalActivities} activities, ${user?.totalWords} words, ${user?.totalTraces} traces`);
+      
+      res.json({ 
+        success: true, 
+        user: { ...user, password: undefined },
+        message: "Estadísticas actualizadas correctamente"
+      });
     } catch (error: any) {
       console.error("Error refreshing user stats:", error);
       res.status(500).json({ message: error.message });
@@ -570,6 +586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteActivity(activityId, parseInt(userId));
+
+      // Update user stats after deleting activity
+      await storage.updateUserStats(parseInt(userId));
 
       // Get updated user stats
       const updatedUser = await storage.getUser(parseInt(userId));

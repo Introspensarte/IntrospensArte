@@ -80,6 +80,47 @@ export default function Profile() {
   const { data: recentActivities = [] } = useQuery<Activity[]>({
     queryKey: [`/api/users/${user?.id}/activities?limit=3`],
     enabled: !!user,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
+  });
+
+  // Auto-refresh user data to keep stats updated
+  const { data: currentUser } = useQuery({
+    queryKey: [`/api/users/${user?.id}`],
+    enabled: !!user?.id,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
+    onSuccess: (userData) => {
+      if (userData && updateUser) {
+        updateUser(userData);
+      }
+    },
+  });
+
+  const refreshStatsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/users/${user?.id}/refresh-stats`, {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.user && updateUser) {
+        updateUser(data.user);
+      }
+      toast({
+        title: "Estadísticas actualizadas",
+        description: data.message || "Las estadísticas han sido recalculadas",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}`] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al actualizar estadísticas",
+        description: error.message || "Ha ocurrido un error",
+        variant: "destructive",
+      });
+    },
   });
 
   const updateMutation = useMutation({
@@ -539,7 +580,18 @@ export default function Profile() {
           {/* Statistics */}
           <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
             <CardHeader>
-              <CardTitle className="font-playfair text-2xl">Estadísticas</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle className="font-playfair text-2xl">Estadísticas</CardTitle>
+                <Button
+                  onClick={() => refreshStatsMutation.mutate()}
+                  disabled={refreshStatsMutation.isPending}
+                  variant="outline"
+                  size="sm"
+                  className="border-soft-lavender/30 text-soft-lavender hover:bg-soft-lavender/10"
+                >
+                  {refreshStatsMutation.isPending ? "..." : "↻"}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -611,7 +663,7 @@ export default function Profile() {
                           </div>
                           <div className="text-xs text-light-gray space-y-1">
                             <p><span className="text-medium-gray">Álbum:</span> {activity.album}</p>
-                            <p><span className="text-medium-gray">Palabras:</span> {activity.wordCount} • <span className="text-medium-gray">Trazos:</span> {activity.traces}</p>
+                            <p><span className="text-medium-gray">Palabras:</span> {activity.word_count || activity.wordCount || 0} • <span className="text-medium-gray">Trazos:</span> {activity.traces}</p>
                             <p><span className="text-medium-gray">Fecha:</span> {new Date(activity.date).toLocaleDateString()}</p>
                           </div>
                         </div>

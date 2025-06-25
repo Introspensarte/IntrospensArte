@@ -215,7 +215,7 @@ export default function UserProfile() {
                           </div>
                           <div className="text-xs text-light-gray space-y-1">
                             <p><span className="text-medium-gray">Álbum:</span> {activity.album}</p>
-                            <p><span className="text-medium-gray">Palabras:</span> {activity.wordCount} • <span className="text-medium-gray">Trazos:</span> {activity.traces}</p>
+                            <p><span className="text-medium-gray">Palabras:</span> {activity.word_count || activity.wordCount || 0} • <span className="text-medium-gray">Trazos:</span> {activity.traces}</p>
                             <p><span className="text-medium-gray">Fecha:</span> {new Date(activity.date).toLocaleDateString()}</p>
                           </div>
                         </div>

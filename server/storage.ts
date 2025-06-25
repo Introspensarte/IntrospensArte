@@ -114,9 +114,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserActivities(userId: number, limit?: number): Promise<Activity[]> {
-    const query = db
+    let query = db
       .select({
         id: activities.id,
+        userId: activities.userId,
         name: activities.name,
         date: activities.date,
         word_count: activities.word_count,
@@ -129,23 +130,19 @@ export class DatabaseStorage implements IStorage {
         album: activities.album,
         traces: activities.traces,
         createdAt: activities.createdAt,
-        userId: activities.userId,
       })
       .from(activities)
       .where(eq(activities.userId, userId))
       .orderBy(desc(activities.createdAt));
 
     if (limit) {
-      query.limit(limit);
+      query = query.limit(limit);
     }
 
-    const userActivities = await query;
-
-    return userActivities.map(activity => ({
+    const result = await query;
+    return result.map(activity => ({
       ...activity,
-      likesCount: 0,
-      commentsCount: 0,
-      isLiked: false,
+      wordCount: activity.word_count, // Ensure compatibility
     }));
   }
 
@@ -180,13 +177,13 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async updateUserStats(userId: number): Promise<User | null> {
+  async updateUserStats(userId: number): Promise<void> {
     try {
       // Verify user exists first
       const user = await this.getUser(userId);
       if (!user) {
         console.warn(`User ${userId} not found, skipping stats update`);
-        return null;
+        return;
       }
 
       // Get fresh data from database to ensure accuracy
@@ -229,10 +226,9 @@ export class DatabaseStorage implements IStorage {
         .returning();
 
       console.log(`Updated stats for user ${userId}: ${totalTraces} traces, ${totalWords} words, ${totalActivities} activities, rank: ${rank}`);
-      return updatedUser;
     } catch (error) {
       console.error(`Error updating stats for user ${userId}:`, error);
-      return null;
+      // Don't throw the error to prevent cascade failures
     }
   }
 
@@ -421,7 +417,7 @@ export class DatabaseStorage implements IStorage {
   async updateActivity(activityId: number, updates: Partial<Activity>): Promise<Activity> {
     // Get the original activity to know the user
     const originalActivity = await this.getActivity(activityId);
-    
+
     const [activity] = await db
       .update(activities)
       .set({ ...updates, updatedAt: new Date() })
@@ -478,38 +474,13 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  async createNotification(data: {
-    userId: number;
-    title: string;
-    message: string;
-    type?: string;
-  }): Promise<any> {
-    const [notification] = await db
-      .insert(notifications)
-      .values({
-        userId: data.userId,
-        title: data.title,
-        message: data.message,
-        type: data.type || 'general',
-        createdAt: new Date(),
-        read: false
-      })
-      .returning();
-
-    return notification;
-  }
+  // Removed duplicate method - already exists above
 
   async getAdminUsers(): Promise<User[]> {
     return await db
       .select()
       .from(users)
       .where(eq(users.role, 'admin'));
-  }
-
-  async getAllUsers(): Promise<User[]> {
-    return await db
-      .select()
-      .from(users);
   }
 
   async getActivity(activityId: number): Promise<Activity | null> {

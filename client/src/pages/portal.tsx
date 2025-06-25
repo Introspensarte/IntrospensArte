@@ -40,10 +40,22 @@ export default function Portal() {
     enabled: !!user,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
   });
 
-  // Remove the automatic stats refresh to prevent spam
-  // Stats will be updated automatically when activities are created/edited/deleted
+  // Auto-refresh user data to keep stats updated
+  const { data: currentUser } = useQuery({
+    queryKey: [`/api/users/${user?.id}`],
+    enabled: !!user?.id,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
+    onSuccess: (userData) => {
+      if (userData && updateUser) {
+        updateUser(userData);
+      }
+    },
+  });
 
   if (!user) {
     return (

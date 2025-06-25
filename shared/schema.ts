@@ -8,14 +8,14 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   fullName: text("full_name").notNull(),
   age: integer("age").notNull(),
-  birthday: text("birthday").notNull(), // DD/MM format
+  birthday: date("birthday").notNull(),
   faceClaim: text("face_claim").notNull(),
   signature: text("signature").notNull().unique(),
   motivation: text("motivation").notNull(),
   facebookLink: text("facebook_link"),
   role: text("role").notNull().default("user"), // user, admin
   rank: text("rank").default("Alma en tránsito"),
-  medal: text("medal"),
+  medal: text("medal").default("Bronce"),
   totalTraces: integer("total_traces").default(0),
   totalWords: integer("total_words").default(0),
   totalActivities: integer("total_activities").default(0),
@@ -26,7 +26,7 @@ export const users = pgTable("users", {
 // Activities table
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
+  userId: integer("user_id").notNull().references(() => users.id),
   name: text("name").notNull(),
   date: timestamp("date").notNull(),
   word_count: integer("word_count").notNull(),
@@ -39,6 +39,7 @@ export const activities = pgTable("activities", {
   album: text("album").notNull(),
   traces: integer("traces").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // News table

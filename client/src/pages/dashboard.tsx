@@ -84,11 +84,13 @@ function ActivityModal({
           {/* Image Section */}
           <div className="w-1/2 bg-black">
             <img 
-              src={activity.image} 
+              src={activity.image || 'https://via.placeholder.com/600x400/1a1a1a/666666?text=Imagen+no+disponible'} 
               alt={activity.name}
               className="w-full h-full object-cover"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "https://via.placeholder.com/600x400/1a1a1a/666666?text=Imagen+no+disponible";
+                const target = e.target as HTMLImageElement;
+                console.log('Modal image failed to load:', target.src);
+                target.src = "https://via.placeholder.com/600x400/1a1a1a/666666?text=Imagen+no+disponible";
               }}
             />
           </div>
@@ -309,8 +311,22 @@ export default function Dashboard() {
               isLiked = userLikeResponse.ok;
             }
 
+            // Fix image path - convert to correct API endpoint
+            let fixedImagePath = 'https://via.placeholder.com/400x300/808080/FFFFFF?text=Actividad';
+            
+            if (activity.image_path) {
+              if (activity.image_path.startsWith('http')) {
+                fixedImagePath = activity.image_path;
+              } else if (activity.image_path.startsWith('/api/images/')) {
+                fixedImagePath = activity.image_path;
+              } else {
+                fixedImagePath = `/api/images/${activity.image_path}`;
+              }
+            }
+
             return {
               ...activity,
+              image: fixedImagePath, // Use 'image' property for consistency
               likesCount: likesData.count || 0,
               commentsCount: commentsData.length || 0,
               isLiked
@@ -318,6 +334,7 @@ export default function Dashboard() {
           } catch (error) {
             return {
               ...activity,
+              image: 'https://via.placeholder.com/400x300/808080/FFFFFF?text=Actividad',
               likesCount: 0,
               commentsCount: 0,
               isLiked: false
@@ -328,6 +345,9 @@ export default function Dashboard() {
 
       return activitiesWithStats;
     },
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   // Like/Unlike mutation
@@ -337,6 +357,8 @@ export default function Dashboard() {
       return response.json();
     },
     onSuccess: () => {
+      // Refresh dashboard data
+      setRefreshKey(prev => prev + 1);
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
     },
     onError: () => {
@@ -355,6 +377,8 @@ export default function Dashboard() {
       return response.json();
     },
     onSuccess: (_, variables) => {
+      // Refresh dashboard data
+      setRefreshKey(prev => prev + 1);
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       queryClient.invalidateQueries({ queryKey: [`/api/activities/${variables.activityId}/comments`] });
       setNewComment("");
@@ -431,6 +455,20 @@ export default function Dashboard() {
     setRefreshKey(prev => prev + 1);
   };
 
+  // Auto-refresh when user interacts with the app or when activities change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshFeed();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -493,6 +531,7 @@ export default function Dashboard() {
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
+                      console.log('Image failed to load:', target.src);
                       target.src = 'https://via.placeholder.com/400x300/808080/FFFFFF?text=Actividad';
                     }}
                   />

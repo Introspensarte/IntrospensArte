@@ -18,82 +18,69 @@ export const db = drizzle({ client: pool, schema });
 await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        "fullName" TEXT NOT NULL,
+        full_name TEXT NOT NULL,
         age INTEGER NOT NULL,
+        birthday DATE NOT NULL,
+        face_claim TEXT NOT NULL,
         signature TEXT UNIQUE NOT NULL,
+        motivation TEXT NOT NULL,
+        facebook_link TEXT,
         role TEXT DEFAULT 'user',
         rank TEXT DEFAULT 'Alma en tránsito',
-        medal TEXT,
-        "totalTraces" INTEGER DEFAULT 0,
-        "totalWords" INTEGER DEFAULT 0,
-        "totalActivities" INTEGER DEFAULT 0,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        medal TEXT DEFAULT 'Bronce',
+        total_traces INTEGER DEFAULT 0,
+        total_words INTEGER DEFAULT 0,
+        total_activities INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS activities (
         id SERIAL PRIMARY KEY,
-        "userId" INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         name TEXT NOT NULL,
-        date TEXT NOT NULL,
+        date TIMESTAMP NOT NULL,
         word_count INTEGER NOT NULL,
         type TEXT NOT NULL,
         responses INTEGER,
         link TEXT,
+        image_path TEXT,
         description TEXT NOT NULL,
         arista TEXT NOT NULL,
         album TEXT NOT NULL,
         traces INTEGER NOT NULL,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("userId") REFERENCES users (id)
-      );
-
-      CREATE TABLE IF NOT EXISTS likes (
-        id SERIAL PRIMARY KEY,
-        "userId" INTEGER NOT NULL,
-        "activityId" INTEGER NOT NULL,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("userId") REFERENCES users (id),
-        FOREIGN KEY ("activityId") REFERENCES activities (id),
-        UNIQUE("userId", "activityId")
-      );
-
-      CREATE TABLE IF NOT EXISTS comments (
-        id SERIAL PRIMARY KEY,
-        "userId" INTEGER NOT NULL,
-        "activityId" INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("userId") REFERENCES users (id),
-        FOREIGN KEY ("activityId") REFERENCES activities (id)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
       );
 
       CREATE TABLE IF NOT EXISTS news (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
-        "authorId" INTEGER NOT NULL,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("authorId") REFERENCES users (id)
+        author_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (author_id) REFERENCES users (id)
       );
 
       CREATE TABLE IF NOT EXISTS announcements (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
-        "authorId" INTEGER NOT NULL,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("authorId") REFERENCES users (id)
+        author_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (author_id) REFERENCES users (id)
       );
 
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
-        "userId" INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
         title TEXT NOT NULL,
         message TEXT NOT NULL,
-        type TEXT DEFAULT 'info',
-        "isRead" BOOLEAN DEFAULT FALSE,
-        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY ("userId") REFERENCES users (id)
+        type TEXT DEFAULT 'general',
+        read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
       );
 
       CREATE TABLE IF NOT EXISTS likes (
@@ -114,5 +101,16 @@ await pool.query(`
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id),
         FOREIGN KEY (activity_id) REFERENCES activities (id)
+      );
+
+      CREATE TABLE IF NOT EXISTS planned_activities (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        arista TEXT NOT NULL,
+        album TEXT NOT NULL,
+        author_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (author_id) REFERENCES users (id)
       );
     `);
