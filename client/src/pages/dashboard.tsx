@@ -84,13 +84,13 @@ function ActivityModal({
           {/* Image Section */}
           <div className="w-1/2 bg-black">
             <img 
-              src={activity.image || 'https://via.placeholder.com/600x400/1a1a1a/666666?text=Imagen+no+disponible'} 
+              src={activity.image || 'https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA'} 
               alt={activity.name}
               className="w-full h-full object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 console.log('Modal image failed to load:', target.src);
-                target.src = "https://via.placeholder.com/600x400/1a1a1a/666666?text=Imagen+no+disponible";
+                target.src = "https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA";
               }}
             />
           </div>
@@ -311,33 +311,31 @@ export default function Dashboard() {
               isLiked = userLikeResponse.ok;
             }
 
-            // Fix image path - convert to correct API endpoint
-            let fixedImagePath = 'https://via.placeholder.com/400x300/808080/FFFFFF?text=Actividad';
+            // Use image_url directly or fallback
+            let imageUrl = activity.image_url || activity.imageUrl;
             
-            if (activity.image_path) {
-              if (activity.image_path.startsWith('http')) {
-                fixedImagePath = activity.image_path;
-              } else if (activity.image_path.startsWith('/api/images/')) {
-                fixedImagePath = activity.image_path;
-              } else {
-                fixedImagePath = `/api/images/${activity.image_path}`;
-              }
+            // Use fallback image if no valid URL
+            if (!imageUrl || imageUrl.trim() === '') {
+              imageUrl = 'https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA';
             }
 
             return {
               ...activity,
-              image: fixedImagePath, // Use 'image' property for consistency
+              image: imageUrl,
               likesCount: likesData.count || 0,
               commentsCount: commentsData.length || 0,
-              isLiked
+              isLiked,
+              wordCount: activity.word_count || activity.wordCount || 0
             };
           } catch (error) {
+            console.error('Error loading activity stats:', error);
             return {
               ...activity,
-              image: 'https://via.placeholder.com/400x300/808080/FFFFFF?text=Actividad',
+              image: 'https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA',
               likesCount: 0,
               commentsCount: 0,
-              isLiked: false
+              isLiked: false,
+              wordCount: activity.word_count || activity.wordCount || 0
             };
           }
         })
@@ -345,7 +343,7 @@ export default function Dashboard() {
 
       return activitiesWithStats;
     },
-    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
@@ -526,13 +524,13 @@ export default function Dashboard() {
               >
                 <div className="relative">
                   <img 
-                    src={activity.image || 'https://via.placeholder.com/400x300/808080/FFFFFF?text=Actividad'} 
+                    src={activity.image || 'https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA'} 
                     alt={activity.name}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       console.log('Image failed to load:', target.src);
-                      target.src = 'https://via.placeholder.com/400x300/808080/FFFFFF?text=Actividad';
+                      target.src = 'https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA';
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

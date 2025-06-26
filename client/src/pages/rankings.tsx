@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -11,22 +10,22 @@ import { Trophy, Medal, Crown, Star, Shield, ChevronDown, ChevronUp, Eye } from 
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 
-function getRankColor(rank: string) {
-  switch (rank) {
-    case "Alma en tránsito":
-      return "bg-yellow-500/20 text-yellow-400";
-    case "Voz en boceto":
-      return "bg-orange-500/20 text-orange-400";
-    case "Narrador de atmósferas":
-      return "bg-green-500/20 text-green-400";
-    case "Escritor de introspecciones":
-      return "bg-blue-500/20 text-blue-400";
-    case "Arquitecto del alma":
-      return "bg-soft-lavender/20 text-soft-lavender";
-    default:
-      return "bg-gray-500/20 text-gray-400";
-  }
-}
+const getRankColor = (rank: string) => {
+    switch (rank) {
+      case "Alma en tránsito":
+        return "bg-gray-500/20 text-gray-400";
+      case "Voz en boceto":
+        return "bg-blue-500/20 text-blue-400";
+      case "Narrador de atmósferas":
+        return "bg-green-500/20 text-green-400";
+      case "Escritor de introspecciones":
+        return "bg-yellow-500/20 text-yellow-400";
+      case "Arquitecto del alma":
+        return "bg-purple-500/20 text-purple-400";
+      default:
+        return "bg-gray-500/20 text-gray-400";
+    }
+  };
 
 export default function Rankings() {
   const { user } = useAuth();
@@ -35,6 +34,10 @@ export default function Rankings() {
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/rankings"],
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    refetchOnMount: true,
+    refetchIntervalInBackground: true,
   });
 
   const sortedByTraces = [...users].sort((a, b) => b.totalTraces - a.totalTraces);

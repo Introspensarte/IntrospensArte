@@ -1,106 +1,104 @@
+
+// Trace calculation based on activity type and content
+
 export function calculateTraces(type: string, wordCount: number, responses?: number): number {
-  if (!type || wordCount <= 0) return 0;
+  console.log(`Calculating traces for type: ${type}, wordCount: ${wordCount}, responses: ${responses}`);
+  
+  let traces = 0;
 
-  let baseTraces = 0;
-  let bonusTraces = 0;
-
-  switch (type) {
-    case "narrativa":
-      // Base: 300 trazos, +100 cada 500 palabras adicionales
-      baseTraces = 300;
-      if (wordCount > 500) {
-        const extraBlocks = Math.floor((wordCount - 500) / 500);
-        baseTraces += extraBlocks * 100;
+  switch (type.toLowerCase()) {
+    case 'microcuento':
+      // 1 a 100 palabras: 100 trazos
+      if (wordCount >= 1 && wordCount <= 100) {
+        traces = 100;
+      } else {
+        // Si excede 100 palabras, se considera como drabble o narrativa
+        traces = calculateTraces(wordCount <= 200 ? 'drabble' : 'narrativa', wordCount);
       }
       break;
-    case "microcuento":
-      // ≤100 palabras = 100 trazos
-      baseTraces = wordCount <= 100 ? 100 : 0;
-      break;
-    case "drabble":
-      // 140-160 palabras = 150 trazos
-      baseTraces = (wordCount >= 140 && wordCount <= 160) ? 150 : 0;
-      break;
-    case "hilo":
-      // Base: 100 trazos, +50 cada 5 respuestas extra
-      baseTraces = 100;
-      if (responses && responses > 0) {
-        const extraGroups = Math.floor(responses / 5);
-        bonusTraces = extraGroups * 50;
+
+    case 'drabble':
+      // 101 a 200 palabras: 200 trazos
+      if (wordCount >= 101 && wordCount <= 200) {
+        traces = 200;
+      } else if (wordCount <= 100) {
+        traces = calculateTraces('microcuento', wordCount);
+      } else {
+        traces = calculateTraces('narrativa', wordCount);
       }
       break;
-    case "rol":
-      // Base: 250 trazos, +150 cada 5 respuestas extra
-      baseTraces = 250;
-      if (responses && responses > 0) {
-        const extraGroups = Math.floor(responses / 5);
-        bonusTraces = extraGroups * 150;
+
+    case 'narrativa':
+      // 201 o más palabras: base de 300 trazos (201 a 499 palabras)
+      // +100 trazos por cada 500 palabras adicionales
+      if (wordCount >= 201) {
+        if (wordCount <= 499) {
+          traces = 300; // Base para 201-499 palabras
+        } else {
+          // Calcular trazos adicionales por cada bloque de 500 palabras
+          const additionalBlocks = Math.floor((wordCount - 500) / 500) + 1;
+          traces = 300 + (additionalBlocks * 100);
+        }
+      } else if (wordCount <= 100) {
+        traces = calculateTraces('microcuento', wordCount);
+      } else {
+        traces = calculateTraces('drabble', wordCount);
       }
       break;
-    case "otro":
-      // Encuesta: 100, Collage: 150, Poemas: 150, Pinturas: 200, Interpretación: 200
-      // Por simplicidad, usamos 150 como promedio
-      baseTraces = 150;
+
+    case 'encuesta':
+      traces = 100;
       break;
+
+    case 'collage':
+      traces = 150;
+      break;
+
+    case 'poemas':
+    case 'poema':
+      traces = 150;
+      break;
+
+    case 'pinturas':
+    case 'pintura':
+      traces = 200;
+      break;
+
+    case 'interpretación':
+    case 'interpretacion':
+      traces = 200;
+      break;
+
+    case 'hilo':
+      // Base de 100 trazos, +50 trazos por cada 5 respuestas adicionales
+      traces = 100;
+      if (responses && responses >= 5) {
+        const additionalBlocks = Math.floor(responses / 5);
+        traces += additionalBlocks * 50;
+      }
+      break;
+
+    case 'rol':
+      // Base de 250 trazos, +150 trazos por cada 5 respuestas adicionales
+      traces = 250;
+      if (responses && responses >= 5) {
+        const additionalBlocks = Math.floor(responses / 5);
+        traces += additionalBlocks * 150;
+      }
+      break;
+
     default:
-      baseTraces = 0;
+      // Para tipos no especificados, usar el sistema anterior como fallback
+      traces = Math.max(Math.floor(wordCount / 10), 10);
+      break;
   }
 
-  return baseTraces + bonusTraces;
+  console.log(`Calculated ${traces} traces`);
+  return traces;
 }
 
-export function calculateBonusTraces(bonusType: string): number {
-  switch (bonusType.toLowerCase()) {
-    case "cumpleaños":
-      return 100;
-    case "ingreso-proyecto":
-      return 100;
-    case "promo":
-      return 50;
-    case "primer-mes":
-      return 50;
-    case "fin-bimestre":
-      return 100;
-    case "express-prom-1":
-      return 200;
-    case "express-prom-2":
-      return 150;
-    case "express-prom-3":
-      return 100;
-    case "express-prom-4":
-      return 75;
-    case "express-prom-5":
-      return 50;
-    default:
-      return 0;
-  }
-}
-
-export function calculateExpressActivityTraces(album: string): number {
-  switch (album.toLowerCase()) {
-    case "prom-1":
-      return 200;
-    case "prom-2":
-      return 150;
-    case "prom-3":
-      return 100;
-    case "prom-4":
-      return 75;
-    case "prom-5":
-      return 50;
-    default:
-      return 0;
-  }
-}
-
-// Función para obtener el tipo sugerido basado en palabras
-export function getSuggestedType(wordCount: number): string {
-  if (wordCount >= 140 && wordCount <= 160) {
-    return 'drabble';
-  } else if (wordCount <= 100) {
-    return 'microcuento';
-  } else if (wordCount >= 300) {
-    return 'narrativa';
-  }
-  return 'otro';
+export function calculateExpressActivityTraces(wordCount: number, deadline: Date): number {
+  const baseTraces = calculateTraces('narrativa', wordCount);
+  const timeBonus = Math.floor((Date.now() - deadline.getTime()) / (1000 * 60 * 60 * 24)) * 10;
+  return Math.max(baseTraces + timeBonus, baseTraces);
 }

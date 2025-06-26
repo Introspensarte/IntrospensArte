@@ -24,7 +24,7 @@
   --destructive-foreground: hsl(0, 0%, 98%);
   --ring: hsl(263, 70%, 50%);
   --radius: 0.5rem;
-  
+
   /* Custom colors for Introspens/arte */
   --dark-graphite: hsl(0, 0%, 6.7%);
   --soft-lavender: hsl(263, 70%, 85%);
@@ -170,3 +170,7 @@
     color: #cbbcff !important;
   }
 }
+--gold: 224 178 116;
+  --purple-rank: 147 51 234;
+
+  --radius: 0.5rem;

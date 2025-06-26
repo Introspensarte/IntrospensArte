@@ -22,8 +22,7 @@ const activitySchema = z.object({
   type: z.string().min(1, "El tipo es requerido"),
   responses: z.number().optional().nullable(),
   link: z.string().url("Debe ser una URL válida").optional().or(z.literal("")).or(z.undefined()),
-  image: z.string().min(1, "La imagen es requerida"),
-  imageFile: z.any().optional(),
+  imageUrl: z.string().url("Debe ser una URL válida de imagen").min(1, "La URL de imagen es requerida"),
   description: z.string().min(1, "La descripción es requerida"),
   arista: z.string().min(1, "La arista es requerida"),
   album: z.string().min(1, "El álbum es requerido"),
@@ -46,8 +45,7 @@ export default function UploadActivity() {
       type: "",
       responses: undefined,
       link: "",
-      image: "",
-      imageFile: undefined,
+      imageUrl: "",
       description: "",
       arista: "",
       album: "",
@@ -69,34 +67,11 @@ export default function UploadActivity() {
 
   const createMutation = useMutation({
     mutationFn: async (data: ActivityForm) => {
-      let imagePath = "";
-
-      // Upload image file if provided
-      if (data.imageFile) {
-        const formData = new FormData();
-        formData.append("file", data.imageFile);
-        formData.append("userId", user?.id?.toString() || "");
-
-        const uploadResponse = await fetch("/api/upload-image", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error("Error al subir la imagen");
-        }
-
-        const uploadResult = await uploadResponse.json();
-        imagePath = uploadResult.imagePath;
-      }
-
       const response = await apiRequest("POST", "/api/activities", {
         ...data,
         userId: user?.id,
         link: data.link || undefined,
-        imagePath: imagePath,
-        image: undefined, // Remove the preview URL
-        imageFile: undefined, // Remove the file object
+        image_url: data.imageUrl,
       });
       return response.json();
     },
@@ -296,26 +271,17 @@ export default function UploadActivity() {
 
                 <FormField
                   control={form.control}
-                  name="image"
+                  name="imageUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-light-gray">Imagen de la actividad *</FormLabel>
+                      <FormLabel className="text-light-gray">URL de imagen *</FormLabel>
                       <FormControl>
                         <div className="space-y-2">
                           <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                // Store file for upload
-                                form.setValue("imageFile", file);
-                                // Create preview URL
-                                const previewUrl = URL.createObjectURL(file);
-                                field.onChange(previewUrl);
-                              }
-                            }}
-                            className="bg-dark-graphite border-medium-gray/30 text-white file:bg-soft-lavender file:text-black file:border-0 file:rounded file:px-3 file:py-1 file:mr-3 hover:file:bg-soft-lavender/80"
+                            {...field}
+                            type="url"
+                            placeholder="https://ejemplo.com/imagen.jpg"
+                            className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
                           />
                           {field.value && (
                             <div className="mt-2">
@@ -323,6 +289,10 @@ export default function UploadActivity() {
                                 src={field.value} 
                                 alt="Vista previa" 
                                 className="w-32 h-32 object-cover rounded border border-medium-gray/30"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = "https://via.placeholder.com/150x150/808080/FFFFFF?text=Error";
+                                }}
                               />
                             </div>
                           )}
@@ -330,8 +300,8 @@ export default function UploadActivity() {
                       </FormControl>
                       <FormMessage />
                       <div className="text-xs text-medium-gray mt-1">
-                        <p>Sube una imagen desde tu computadora (JPG, PNG, GIF, etc.)</p>
-                        <p>Tamaño máximo: 10MB</p>
+                        <p>Pega aquí la URL de tu imagen desde Facebook, Pinterest, Instagram, etc.</p>
+                        <p>Ejemplo: https://i.pinimg.com/564x/...</p>
                       </div>
                     </FormItem>
                   )}

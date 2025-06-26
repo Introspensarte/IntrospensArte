@@ -1,4 +1,3 @@
-
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,11 +31,25 @@ export default function UserProfile() {
   const { data: user, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/users/${userId}`],
     enabled: !!userId,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
-  const { data: activities = [] } = useQuery<Activity[]>({
+  const { data: activities = [], isLoading: activitiesLoading } = useQuery<Activity[]>({
     queryKey: [`/api/users/${userId}/activities`],
     enabled: !!userId,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: bonusHistory = [] } = useQuery<any[]>({
+    queryKey: [`/api/users/${userId}/bonus-history`],
+    enabled: !!userId,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   if (userLoading) {
@@ -116,7 +129,7 @@ export default function UserProfile() {
           </Button>
         </div>
 
-        <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-8">
           {/* Profile Information */}
           <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
             <CardHeader>
@@ -237,6 +250,48 @@ export default function UserProfile() {
               ) : (
                 <div className="text-center py-6">
                   <p className="text-medium-gray text-sm">Este usuario no tiene actividades aún</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Cronología Bonus */}
+          <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="font-playfair text-2xl">Cronología Bonus</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-96 overflow-y-auto">
+              {bonusHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {bonusHistory.map((bonus) => (
+                    <div key={bonus.id} className="p-3 bg-gradient-to-r from-gold/10 to-soft-lavender/10 rounded-lg border border-gold/20">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-white text-sm mb-1">{bonus.title}</h4>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className="bg-gold/20 text-gold">
+                              +{bonus.traces} trazos
+                            </Badge>
+                            <Badge variant="outline" className="text-xs border-medium-gray/30 text-medium-gray">
+                              {bonus.type === 'registration' ? 'Registro' : 
+                               bonus.type === 'birthday' ? 'Cumpleaños' : 
+                               bonus.type === 'admin_assignment' ? 'Admin' : bonus.type}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-light-gray space-y-1">
+                            <p><span className="text-medium-gray">Fecha:</span> {new Date(bonus.createdAt).toLocaleDateString()}</p>
+                            {bonus.reason && (
+                              <p><span className="text-medium-gray">Motivo:</span> {bonus.reason}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-medium-gray text-sm">Este usuario no tiene bonificaciones registradas</p>
                 </div>
               )}
             </CardContent>

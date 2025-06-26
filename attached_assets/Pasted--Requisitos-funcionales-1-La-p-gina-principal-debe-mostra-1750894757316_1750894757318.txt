@@ -1,0 +1,62 @@
+“𝐈𝐧𝐭𝐫𝐨𝐬𝐩𝐞𝐧𝐬/𝒂𝒓𝒕𝒆/”.
+
+Requisitos funcionales:
+	1.	La página principal (”/”) debe mostrar dos botones: Registrarse (/registro.html) e Iniciar sesión (/login.html).
+	2.	En /registro.html incluir un formulario con: Nombre y Apellido, Edad, Cumpleaños (dd/mm), Face Claim, Firma (con # al inicio), ¿Por qué desea ingresar al proyecto?, y Link de Facebook. Guardar usuarios en una base de datos PostgreSQL externa, no usar archivos locales.
+	3.	En /login.html los usuarios inician sesión ingresando solo su firma. Si coincide con una firma registrada, redirige a /portal.html.
+	4.	En /portal.html mostrar menú con enlaces funcionales a: Panel Admin (solo admins), Dashboard, Noticias, Avisos, Actividades por realizar, Sube tu actividad, Ranking global (Trazos), Ranking global (Palabras).
+	5.	En Mi perfil mostrar: nombre, edad, cumpleaños, firma, Facebook, fecha de registro, una estadistica que muestre: total de trazos, total de palabras y total de actividades. Y un apartado que muestre “Mis actividades” donde aparezcan todas las actividades que han subido con su cantidad de palabras, trazos, arista y album al que pertenecen y deben ser ordenadas de la mas reciente hacia la menos reciente.
+	6.	Los usuarios pueden editar solo: nombre, edad, cumpleaños y Facebook. Solo admin puede editar cualquier campo adicional como firma, rol, rango o medalla.
+	7.	En Sube tu actividad, formulario con: nombre, fecha, palabras, tipo (Narrativa, Microcuento, Drabble, Hilo, Rol, Otro), respuestas (si aplica), link, descripción breve, y link obligatorio de imagen para la actividad, arista, y álbum.
+	8.	Noticias, Avisos y Actividades por realizar deben verse por todos, pero solo admin puede subir contenido a estas secciones.
+	9.	Rankings globales: mostrar nombre, firma, trazos o palabras totales, ordenados de mayor a menor. Destacar la posición del usuario actual. Debe funcionar en forma de acordeon para ver resumen del perfil de otros usuarios, incluyendo sus estadísticas y actividades, así como debe tener un boton funcional para ver el pefil completo del otro usuario.
+	10.	Sistema de roles: solo admin puede otorgar rol de admin a otro usuario. El usuario con firma #INELUDIBLE debe tener rol admin por defecto. Solo admin puede cambiar firmas o subir de rango a otros usuarios.
+	11.	Los rangos se asignan manualmente por los admin. Cada rango debe incluir una medalla:
+
+	•	Alma en tránsito – sin medalla
+	•	Voz en boceto – “Susurros que germinan”
+	•	Narrador de atmósferas – “Excelente narrador”
+	•	Escritor de introspecciones – “Lector de huellas”
+	•	Arquitecto del alma – “Arquitecto de personajes”
+
+	12.	Las actividades por realizar deben organizarse por aristas y álbumes. Cada vez que un admin sube una actividad nueva, debe seleccionar el arista y el álbum correspondiente.
+
+Aristas y álbumes:
+I. INVENTARIO DE LA VIDA
+⟡ Inventario de Sentidos
+⟡ Compras y Dilemas
+⟡ Cartas desde la rutina
+⟡ Chequeos y descuidos
+
+II. MAPA DEL INCONSCIENTE
+⟡ Conversaciones en el tiempo
+⟡ Diario de los sueños
+⟡ Habitaciones sin salidas
+
+III. ECOS DEL CORAZÓN
+⟡ Cicatrices invisibles
+⟡ Melodías en el aire
+⟡ Ternuras y traiciones
+
+IV. REFLEJOS EN EL TIEMPO
+⟡ Susurros de otras vidas
+⟡ Ecos del alma
+⟡ Conexión espiritual
+
+V. GALERÍA DEL ALMA
+⟡ Vestigios de la Moda
+⟡ Obras del Ser
+⟡ El reflejo de las palabras
+	14.	Todas las páginas HTML deben ir en la carpeta /public.
+	15.	Toda la app debe ejecutarse desde node server.js, usando package.json. Conexión a base de datos debe hacerse a través de la variable de entorno DATABASE_URL.
+	16.	Usa el módulo pg para PostgreSQL. Al iniciar el backend, crear las tablas necesarias si no existen.
+
+No uses archivos locales para guardar usuarios ni actividades. Todo debe almacenarse en PostgreSQL. Prepara la aplicación para ser desplegada en Render sin dependencias externas como Replit DB. Solo código funcional, completo, en una ejecución.”
+
+Pero debes añadirle esto de forma importante o recalcarlo:
+
+Reestructura este proyecto para que funcione como un sitio web con frontend separado en la carpeta /public, y asegúrate de que todos los archivos HTML y recursos estáticos estén ahí. Además, configura Express con app.use(express.static('public')) para que Render pueda servir la página correctamente.
+
+Y POR FAVOR TENER EN CUENTA EL PANEL DE ADMIN, es muy importante. Porque es importante que este, yo hare los admins en render.
+
+Y QUE SE ADAPTE A TODAS LAS PANTALLAS, asi como los menus.

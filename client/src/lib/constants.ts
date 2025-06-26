@@ -71,12 +71,12 @@ export const RANKS = [
   "Voz en boceto",
   "Narrador de atmósferas",
   "Escritor de introspecciones",
-  "Arquitecto del alma",
+  "Arquitecto del alma"
 ];
 
 export const MEDALS = [
-  { rank: "Voz en boceto", medal: "Susurros que germinan" },
-  { rank: "Narrador de atmósferas", medal: "Excelente narrador" },
-  { rank: "Escritor de introspecciones", medal: "Lector de huellas" },
-  { rank: "Arquitecto del alma", medal: "Arquitecto de personajes" },
+  "Susurros que germinan",
+  "Excelente narrador", 
+  "Lector de huellas",
+  "Arquitecto de personajes"
 ];

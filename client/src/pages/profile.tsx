@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -36,8 +36,7 @@ const activityEditSchema = z.object({
   type: z.string().min(1, "El tipo es requerido"),
   responses: z.number().optional().nullable(),
   link: z.string().url("Debe ser una URL válida").optional().or(z.literal("")).or(z.undefined()),
-  image: z.string().min(1, "La imagen es requerida"),
-  imageFile: z.any().optional(),
+  imageUrl: z.string().min(1, "La URL de la imagen es requerida"),
   description: z.string().min(1, "La descripción es requerida"),
   arista: z.string().min(1, "La arista es requerida"),
   album: z.string().min(1, "El álbum es requerido"),
@@ -64,7 +63,7 @@ function getRankColor(rank: string) {
 }
 
 export default function Profile() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, refreshUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -85,19 +84,34 @@ export default function Profile() {
     refetchInterval: 30000,
   });
 
+  const { data: bonusHistory = [] } = useQuery<any[]>({
+    queryKey: [`/api/users/${user?.id}/bonus-history`],
+    enabled: !!user,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
+  });
+
   // Auto-refresh user data to keep stats updated
   const { data: currentUser } = useQuery({
     queryKey: [`/api/users/${user?.id}`],
     enabled: !!user?.id,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    refetchInterval: 5000, // More frequent refresh to catch admin changes
     onSuccess: (userData) => {
       if (userData && updateUser) {
         updateUser(userData);
       }
     },
   });
+
+  // Additional effect to refresh user data when component mounts
+  useEffect(() => {
+    if (user?.id) {
+      refreshUser();
+    }
+  }, []);
 
   const refreshStatsMutation = useMutation({
     mutationFn: async () => {
@@ -176,44 +190,25 @@ export default function Profile() {
 
   const updateActivityMutation = useMutation({
     mutationFn: async ({ activityId, data }: { activityId: number; data: ActivityEditForm }) => {
-      const formData = new FormData();
-
-      // Add all the activity data - make sure userId is properly set
       if (!user?.id) {
         throw new Error("Usuario no autenticado");
       }
 
-      formData.append('userId', user.id.toString());
-      formData.append('name', data.name);
-      formData.append('date', data.date);
-      formData.append('wordCount', data.wordCount.toString());
-      formData.append('type', data.type);
-      if (data.responses) formData.append('responses', data.responses.toString());
-      if (data.link) formData.append('link', data.link);
-      formData.append('description', data.description);
-      formData.append('arista', data.arista);
-      formData.append('album', data.album);
+      const updateData = {
+        userId: user.id,
+        name: data.name,
+        date: data.date,
+        wordCount: data.wordCount,
+        type: data.type,
+        responses: data.responses || undefined,
+        link: data.link?.trim() || undefined,
+        imageUrl: data.imageUrl || "",
+        description: data.description,
+        arista: data.arista,
+        album: data.album,
+      };
 
-      // Handle image upload
-      if (data.imageFile) {
-        formData.append('file', data.imageFile);
-      } else if (data.image && !data.image.startsWith('blob:')) {
-        // Extract filename from image path if it's an existing image
-        const imagePath = data.image.includes('/api/images/') 
-          ? data.image.split('/api/images/')[1] 
-          : data.image;
-        formData.append('imagePath', imagePath);
-      }
-
-      const response = await fetch(`/api/activities/${activityId}`, {
-        method: 'PUT',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
+      const response = await apiRequest("PUT", `/api/activities/${activityId}`, updateData);
       return response.json();
     },
     onSuccess: (data) => {
@@ -226,9 +221,14 @@ export default function Profile() {
         title: "Actividad actualizada",
         description: "La actividad ha sido actualizada exitosamente",
       });
+      
+      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities?limit=3`] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rankings"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}`] });
+      
       setIsEditDialogOpen(false);
       setEditingActivity(null);
     },
@@ -246,11 +246,11 @@ export default function Profile() {
     defaultValues: {
       name: "",
       date: "",
-      wordCount: undefined,
+      wordCount: 1,
       type: "",
       responses: undefined,
       link: "",
-      image: "",
+      imageUrl: "",
       description: "",
       arista: "",
       album: "",
@@ -307,11 +307,11 @@ export default function Profile() {
     activityEditForm.reset({
       name: activity.name,
       date: activity.date ? new Date(activity.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      wordCount: activity.wordCount || 1,
+      wordCount: activity.word_count || activity.wordCount || 1,
       type: activity.type,
       responses: activity.responses || undefined,
       link: activity.link || "",
-      image: activity.image_path ? `/api/images/${activity.image_path}` : "",
+      imageUrl: activity.image_url || (activity.image_path ? `/api/images/${activity.image_path}` : ""),
       description: activity.description,
       arista: activity.arista,
       album: activity.album,
@@ -321,12 +321,20 @@ export default function Profile() {
 
   const onActivityEditSubmit = (data: ActivityEditForm) => {
     if (editingActivity) {
+      console.log("Submitting activity edit:", data);
       updateActivityMutation.mutate({
         activityId: editingActivity.id!,
         data: {
-          ...data,
-          link: data.link?.trim() || undefined,
+          name: data.name,
+          date: data.date,
+          wordCount: data.wordCount,
+          type: data.type,
           responses: data.responses || undefined,
+          link: data.link?.trim() || undefined,
+          imageUrl: data.imageUrl,
+          description: data.description,
+          arista: data.arista,
+          album: data.album,
         },
       });
     }
@@ -373,7 +381,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen py-20 px-6">
       <div className="max-w-6xl mx-auto animate-slide-up pt-16">
-        <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-8">
           {/* Profile Information */}
           <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
             <CardHeader>
@@ -709,6 +717,48 @@ export default function Profile() {
               )}
             </CardContent>
           </Card>
+
+          {/* Cronología Bonus */}
+          <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="font-playfair text-2xl">Cronología Bonus</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-96 overflow-y-auto">
+              {bonusHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {bonusHistory.map((bonus) => (
+                    <div key={bonus.id} className="p-3 bg-gradient-to-r from-gold/10 to-soft-lavender/10 rounded-lg border border-gold/20">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-white text-sm mb-1">{bonus.title}</h4>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className="bg-gold/20 text-gold">
+                              +{bonus.traces} trazos
+                            </Badge>
+                            <Badge variant="outline" className="text-xs border-medium-gray/30 text-medium-gray">
+                              {bonus.type === 'registration' ? 'Registro' : 
+                               bonus.type === 'birthday' ? 'Cumpleaños' : 
+                               bonus.type === 'admin_assignment' ? 'Admin' : bonus.type}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-light-gray space-y-1">
+                            <p><span className="text-medium-gray">Fecha:</span> {new Date(bonus.createdAt).toLocaleDateString()}</p>
+                            {bonus.reason && (
+                              <p><span className="text-medium-gray">Motivo:</span> {bonus.reason}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-medium-gray text-sm">No tienes bonificaciones registradas</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Activity Edit Dialog */}
@@ -859,47 +909,42 @@ export default function Profile() {
                 />
 
                 <FormField
-                        control={activityEditForm.control}
-                        name="image"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-light-gray">Imagen de la actividad *</FormLabel>
-                            <FormControl>
-                              <div className="space-y-2">
-                                <Input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      // Store file for upload
-                                      activityEditForm.setValue("imageFile", file);
-                                      // Create preview URL
-                                      const previewUrl = URL.createObjectURL(file);
-                                      field.onChange(previewUrl);
-                                    }
-                                  }}
-                                  className="bg-dark-graphite border-medium-gray/30 text-white file:bg-soft-lavender file:text-black file:border-0 file:rounded file:px-3 file:py-1 file:mr-3 hover:file:bg-soft-lavender/80"
-                                />
-                                {field.value && (
-                                  <div className="mt-2">
-                                    <img 
-                                      src={field.value.startsWith('blob:') ? field.value : `/api/images/${field.value}`} 
-                                      alt="Vista previa" 
-                                      className="w-32 h-32 object-cover rounded border border-medium-gray/30"
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                            <div className="text-xs text-medium-gray mt-1">
-                              <p>Sube una nueva imagen o mantén la actual</p>
-                              <p>Tamaño máximo: 10MB</p>
+                  control={activityEditForm.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-light-gray">URL de imagen *</FormLabel>
+                      <FormControl>
+                        <div className="space-y-2">
+                          <Input
+                            {...field}
+                            type="url"
+                            placeholder="https://ejemplo.com/imagen.jpg"
+                            className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
+                          />
+                          {field.value && (
+                            <div className="mt-2">
+                              <img 
+                                src={field.value} 
+                                alt="Vista previa" 
+                                className="w-32 h-32 object-cover rounded border border-medium-gray/30"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = "https://via.placeholder.com/150x150/808080/FFFFFF?text=Error";
+                                }}
+                              />
                             </div>
-                          </FormItem>
-                        )}
-                      />
+                          )}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                      <div className="text-xs text-medium-gray mt-1">
+                        <p>Pega aquí la URL de tu imagen desde Facebook, Pinterest, Instagram, etc.</p>
+                        <p>Ejemplo: https://i.pinimg.com/564x/...</p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <FormField

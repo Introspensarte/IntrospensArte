@@ -26,14 +26,14 @@ export const users = pgTable("users", {
 // Activities table
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   name: text("name").notNull(),
   date: timestamp("date").notNull(),
   word_count: integer("word_count").notNull(),
   type: text("type").notNull(), // narrativa, microcuento, drabble, hilo, rol, otro
   responses: integer("responses"),
   link: text("link"),
-  image_path: text("image_path"), // Ruta de la imagen subida
+  image_url: text("image_url"), // URL de la imagen externa
   description: text("description"),
   arista: text("arista").notNull(),
   album: text("album").notNull(),
@@ -84,6 +84,18 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Bonus history table
+export const bonusHistory = pgTable("bonus_history", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  traces: integer("traces").notNull(),
+  type: text("type").notNull(), // 'registration', 'birthday', 'admin_assignment', etc.
+  assignedById: integer("assigned_by_id").references(() => users.id),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Define relations
 export const usersRelations = relations(users, ({ many }) => ({
   activities: many(activities),
@@ -91,6 +103,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   announcements: many(announcements),
   plannedActivities: many(plannedActivities),
   notifications: many(notifications),
+  bonusHistory: many(bonusHistory),
 }));
 
 export const activitiesRelations = relations(activities, ({ one }) => ({
@@ -128,6 +141,17 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   }),
 }));
 
+export const bonusHistoryRelations = relations(bonusHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [bonusHistory.userId],
+    references: [users.id],
+  }),
+  assignedBy: one(users, {
+    fields: [bonusHistory.assignedById],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas with proper validation
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -155,7 +179,7 @@ export const insertActivitySchema = z.object({
   type: z.enum(['narrativa', 'microcuento', 'drabble', 'hilo', 'rol', 'otro']),
   responses: z.number().optional().nullable(),
   link: z.string().url("Debe ser una URL válida").optional().or(z.literal("")).or(z.undefined()),
-  image_path: z.string().min(1, "La imagen es requerida").optional(),
+  image_url: z.string().url("Debe ser una URL válida de imagen").min(1, "La URL de imagen es requerida"),
   description: z.string().min(1, "La descripción es requerida"),
   arista: z.string().min(1, "La arista es requerida"),
   album: z.string().min(1, "El álbum es requerido"),
@@ -186,6 +210,11 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true,
 });
 
+export const insertBonusHistorySchema = createInsertSchema(bonusHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -198,7 +227,7 @@ export type Activity = {
   type: string;
   responses?: number | null;
   link?: string | null;
-  image_path?: string | null;
+  image_url?: string | null;
   description: string;
   arista: string;
   album: string;
@@ -232,3 +261,5 @@ export type PlannedActivity = typeof plannedActivities.$inferSelect;
 export type InsertPlannedActivity = z.infer<typeof insertPlannedActivitySchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type BonusHistory = typeof bonusHistory.$inferSelect;
+export type InsertBonusHistory = z.infer<typeof insertBonusHistorySchema>;

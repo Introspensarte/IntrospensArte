@@ -1,9 +1,9 @@
 import { Link } from "wouter";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
 import { 
   User, 
   Newspaper, 
@@ -139,11 +139,11 @@ export default function Portal() {
               )}
             </div>
           </div>
-          
+
           <h1 className="font-playfair text-5xl font-bold mb-4 text-soft-lavender">IntrospensArte</h1>
           <div className="decorative-line mb-4"></div>
           <p className="text-light-gray text-lg mb-6">Portal de la comunidad artística</p>
-          
+
           {/* Facebook Links */}
           <div className="flex justify-center space-x-6 mb-4">
             <a 
@@ -222,7 +222,7 @@ export default function Portal() {
             </Link>
           ))}
 
-          
+
         </div>
 
         {/* Quick Stats */}
@@ -237,7 +237,7 @@ export default function Portal() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-black/20 backdrop-blur-sm border-medium-gray/10">
             <CardContent className="p-6">
               <div className="text-center">
@@ -248,7 +248,7 @@ export default function Portal() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-black/20 backdrop-blur-sm border-medium-gray/10">
             <CardContent className="p-6">
               <div className="text-center">

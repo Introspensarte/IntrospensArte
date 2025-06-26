@@ -5,18 +5,21 @@ import {
   announcements,
   plannedActivities,
   notifications,
+  bonusHistory,
   type User,
-  type InsertUser,
   type Activity,
-  type InsertActivity,
   type News,
-  type InsertNews,
   type Announcement,
-  type InsertAnnouncement,
   type PlannedActivity,
-  type InsertPlannedActivity,
   type Notification,
+  type BonusHistory,
+  type InsertUser,
+  type InsertActivity,
+  type InsertNews,
+  type InsertAnnouncement,
+  type InsertPlannedActivity,
   type InsertNotification,
+  type InsertBonusHistory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -41,10 +44,14 @@ export interface IStorage {
   // News operations
   createNews(news: InsertNews & { authorId: number }): Promise<News>;
   getAllNews(): Promise<Array<News & { author: User }>>;
+  updateNews(id: number, updates: Partial<News>): Promise<News>;
+  deleteNews(id: number): Promise<void>;
 
   // Announcement operations
   createAnnouncement(announcement: InsertAnnouncement & { authorId: number }): Promise<Announcement>;
   getAllAnnouncements(): Promise<Array<Announcement & { author: User }>>;
+  updateAnnouncement(id: number, updates: Partial<Announcement>): Promise<Announcement>;
+  deleteAnnouncement(id: number): Promise<void>;
 
   // Planned activity operations
   createPlannedActivity(activity: InsertPlannedActivity & { authorId: number }): Promise<PlannedActivity>;
@@ -55,6 +62,10 @@ export interface IStorage {
   getUserNotifications(userId: number): Promise<Notification[]>;
   markNotificationAsRead(id: number): Promise<void>;
   createNotificationForAllUsers(title: string, message: string): Promise<void>;
+
+  // Bonus History operations
+  createBonusHistory(data: InsertBonusHistory): Promise<BonusHistory>;
+  getUserBonusHistory(userId: number): Promise<BonusHistory[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -73,9 +84,24 @@ export class DatabaseStorage implements IStorage {
     const userData = {
       ...insertUser,
       role: insertUser.signature === "#INELUDIBLE" ? "admin" : "user",
+      totalTraces: 50, // Give 50 initial traces upon registration
     };
 
     const [user] = await db.insert(users).values(userData).returning();
+
+    // Create registration bonus history entry
+    try {
+      await this.createBonusHistory({
+        userId: user.id,
+        title: "Bonus de Registro",
+        traces: 50,
+        type: "registration",
+        reason: "Bonificación por crear una cuenta en Introspens/arte"
+      });
+      console.log(`Created registration bonus for user ${user.id}`);
+    } catch (error) {
+      console.error("Error creating registration bonus:", error);
+    }
 
     // Create welcome notification
     await this.createNotification({
@@ -88,12 +114,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: number, updates: Partial<User>): Promise<User> {
-    const [user] = await db
+    // Limpiar valor de medalla si es "none"
+    const cleanUpdates = { ...updates };
+    if (cleanUpdates.medal === "none") {
+      cleanUpdates.medal = null;
+    }
+
+    // Asignar medalla automáticamente según el rango
+    if (cleanUpdates.rank) {
+      switch (cleanUpdates.rank) {
+        case "Alma en tránsito":
+          cleanUpdates.medal = null;
+          break;
+        case "Voz en boceto":
+          cleanUpdates.medal = "Susurros que germinan";
+          break;
+        case "Narrador de atmósferas":
+          cleanUpdates.medal = "Excelente narrador";
+          break;
+        case "Escritor de introspecciones":
+          cleanUpdates.medal = "Lector de huellas";
+          break;
+        case "Arquitecto del alma":
+          cleanUpdates.medal = "Arquitecto de personajes";
+          break;
+      }
+    }
+
+    const [updatedUser] = await db
       .update(users)
-      .set({ ...updates, updatedAt: new Date() })
+      .set(cleanUpdates)
       .where(eq(users.id, id))
       .returning();
-    return user;
+
+    return updatedUser;
   }
 
   async getAllUsers(): Promise<User[]> {
@@ -124,7 +178,7 @@ export class DatabaseStorage implements IStorage {
         type: activities.type,
         responses: activities.responses,
         link: activities.link,
-        image_path: activities.image_path,
+        image_url: activities.image_url,
         description: activities.description,
         arista: activities.arista,
         album: activities.album,
@@ -143,6 +197,7 @@ export class DatabaseStorage implements IStorage {
     return result.map(activity => ({
       ...activity,
       wordCount: activity.word_count, // Ensure compatibility
+      imageUrl: activity.image_url, // Ensure image_url mapping
     }));
   }
 
@@ -157,7 +212,7 @@ export class DatabaseStorage implements IStorage {
         type: activities.type,
         responses: activities.responses,
         link: activities.link,
-        image_path: activities.image_path,
+        image_url: activities.image_url,
         description: activities.description,
         arista: activities.arista,
         album: activities.album,
@@ -171,6 +226,8 @@ export class DatabaseStorage implements IStorage {
 
     return result.map(item => ({
       ...item,
+      wordCount: item.word_count, // Ensure compatibility
+      imageUrl: item.image_url, // Ensure image_url mapping
       likesCount: 0,
       commentsCount: 0,
       isLiked: false,
@@ -196,11 +253,15 @@ export class DatabaseStorage implements IStorage {
         .from(activities)
         .where(eq(activities.userId, userId));
 
-      const totalTraces = userActivities.reduce((sum, activity) => sum + (activity.traces || 0), 0);
+      // Sum up the traces and words from activities
+      const activityTraces = userActivities.reduce((sum, activity) => sum + (activity.traces || 0), 0);
       const totalWords = userActivities.reduce((sum, activity) => sum + (activity.word_count || 0), 0);
       const totalActivities = userActivities.length;
 
-      // Calculate rank based on traces
+      // Add initial 50 traces to activity traces (given at registration)
+      const totalTraces = activityTraces + 50;
+
+      // Calculate rank based on total traces
       let rank = "Alma en tránsito";
       if (totalTraces >= 5000) {
         rank = "Arquitecto del alma";
@@ -225,7 +286,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(users.id, userId))
         .returning();
 
-      console.log(`Updated stats for user ${userId}: ${totalTraces} traces, ${totalWords} words, ${totalActivities} activities, rank: ${rank}`);
+      console.log(`Updated stats for user ${userId}: ${totalTraces} traces (${activityTraces} from activities + 50 initial), ${totalWords} words, ${totalActivities} activities, rank: ${rank}`);
     } catch (error) {
       console.error(`Error updating stats for user ${userId}:`, error);
       // Don't throw the error to prevent cascade failures
@@ -259,6 +320,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(news.createdAt));
   }
 
+  async updateNews(id: number, updates: Partial<News>): Promise<News> {
+    const [updatedNews] = await db
+      .update(news)
+      .set(updates)
+      .where(eq(news.id, id))
+      .returning();
+    return updatedNews;
+  }
+
+  async deleteNews(id: number): Promise<void> {
+    await db.delete(news).where(eq(news.id, id));
+  }
+
   async createAnnouncement(announcementData: InsertAnnouncement & { authorId: number }): Promise<Announcement> {
     const [announcement] = await db.insert(announcements).values(announcementData).returning();
 
@@ -284,6 +358,19 @@ export class DatabaseStorage implements IStorage {
       .from(announcements)
       .leftJoin(users, eq(announcements.authorId, users.id))
       .orderBy(desc(announcements.createdAt));
+  }
+
+  async updateAnnouncement(id: number, updates: Partial<Announcement>): Promise<Announcement> {
+    const [updatedAnnouncement] = await db
+      .update(announcements)
+      .set(updates)
+      .where(eq(announcements.id, id))
+      .returning();
+    return updatedAnnouncement;
+  }
+
+  async deleteAnnouncement(id: number): Promise<void> {
+    await db.delete(announcements).where(eq(announcements.id, id));
   }
 
   async createPlannedActivity(activityData: InsertPlannedActivity & { authorId: number }): Promise<PlannedActivity> {
@@ -404,7 +491,15 @@ export class DatabaseStorage implements IStorage {
       WHERE c.activity_id = ${activityId}
       ORDER BY c.created_at ASC
     `);
-    return result.rows;
+    return result.rows.map(row => ({
+      id: row.id,
+      content: row.content,
+      createdAt: row.created_at,
+      user: {
+        fullName: row.full_name,
+        signature: row.signature
+      }
+    }));
   }
 
   async getCommentsCount(activityId: number): Promise<number> {
@@ -415,21 +510,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateActivity(activityId: number, updates: Partial<Activity>): Promise<Activity> {
-    // Get the original activity to know the user
-    const originalActivity = await this.getActivity(activityId);
+    try {
+      console.log(`Updating activity ${activityId} with:`, updates);
 
-    const [activity] = await db
-      .update(activities)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(activities.id, activityId))
-      .returning();
+      // Get the original activity to know the user
+      const originalActivity = await this.getActivity(activityId);
+      if (!originalActivity) {
+        throw new Error("Actividad no encontrada");
+      }
 
-    // Update user stats after activity update
-    if (originalActivity?.userId) {
-      await this.updateUserStats(originalActivity.userId);
+      const [activity] = await db
+        .update(activities)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(activities.id, activityId))
+        .returning();
+
+      if (!activity) {
+        throw new Error("Error al actualizar la actividad");
+      }
+
+      console.log(`Activity ${activityId} updated successfully`);
+      return activity;
+    } catch (error) {
+      console.error(`Error updating activity ${activityId}:`, error);
+      throw error;
     }
-
-    return activity;
   }
 
   async deleteActivity(activityId: number, userId: number): Promise<boolean> {
@@ -495,6 +600,117 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error getting activity:", error);
       return null;
+    }
+  }
+
+  async createTraceAssignment(assignmentData: {
+    title: string;
+    date: Date;
+    reason: string;
+    tracesAmount: number;
+    adminId: number;
+    userIds: number[];
+  }): Promise<any> {
+    try {
+      // Create the assignment record
+      const [assignment] = await db.execute(sql`
+        INSERT INTO trace_assignments (title, date, reason, traces_amount, admin_id, created_at)
+        VALUES (${assignmentData.title}, ${assignmentData.date}, ${assignmentData.reason}, ${assignmentData.tracesAmount}, ${assignmentData.adminId}, NOW())
+        RETURNING *
+      `);
+
+      const assignmentId = assignment.id;
+
+      // Create user-assignment relationships
+      for (const userId of assignmentData.userIds) {
+        await db.execute(sql`
+          INSERT INTO trace_assignment_users (assignment_id, user_id, created_at)
+          VALUES (${assignmentId}, ${userId}, NOW())
+        `);
+      }
+
+      return assignment;
+    } catch (error) {
+      console.error("Error creating trace assignment:", error);
+      throw error;
+    }
+  }
+
+  async adminDeleteActivity(activityId: number): Promise<boolean> {
+    try {
+      // Get the activity before deleting for stats update
+      const activity = await this.getActivity(activityId);
+      if (!activity) {
+        throw new Error("Actividad no encontrada");
+      }
+
+      // Delete the activity (admin can delete any activity)
+      await db.delete(activities).where(eq(activities.id, activityId));
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting activity (admin):", error);
+      throw error;
+    }
+  }
+
+  async getAllPlannedActivities(): Promise<Array<PlannedActivity & { author: User }>> {
+    return await db
+      .select({
+        id: plannedActivities.id,
+        title: plannedActivities.title,
+        description: plannedActivities.description,
+        arista: plannedActivities.arista,
+        album: plannedActivities.album,
+        authorId: plannedActivities.authorId,
+        createdAt: plannedActivities.createdAt,
+        author: users,
+      })
+      .from(plannedActivities)
+      .leftJoin(users, eq(plannedActivities.authorId, users.id))
+      .orderBy(desc(plannedActivities.createdAt));
+  }
+
+  async deletePlannedActivity(id: number): Promise<void> {
+    await db.delete(plannedActivities).where(eq(plannedActivities.id, id));
+  }
+
+  // Bonus History methods
+  async createBonusHistory(data: InsertBonusHistory): Promise<BonusHistory> {
+    try {
+      const [bonusHistoryItem] = await db
+        .insert(bonusHistory)
+        .values(data)
+        .returning();
+      return bonusHistoryItem;
+    } catch (error) {
+      console.error("Error creating bonus history:", error);
+      throw error;
+    }
+  }
+
+  async getUserBonusHistory(userId: number): Promise<BonusHistory[]> {
+    try {
+      const result = await db
+        .select({
+          id: bonusHistory.id,
+          userId: bonusHistory.userId,
+          title: bonusHistory.title,
+          traces: bonusHistory.traces,
+          type: bonusHistory.type,
+          assignedById: bonusHistory.assignedById,
+          reason: bonusHistory.reason,
+          createdAt: bonusHistory.createdAt,
+        })
+        .from(bonusHistory)
+        .where(eq(bonusHistory.userId, userId))
+        .orderBy(desc(bonusHistory.createdAt));
+      
+      console.log(`Retrieved ${result.length} bonus history entries for user ${userId}`);
+      return result;
+    } catch (error) {
+      console.error("Error getting user bonus history:", error);
+      return [];
     }
   }
 }

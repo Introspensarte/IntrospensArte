@@ -1,0 +1,52 @@
+Necesito que se reponga su funcionamiento original, sin borrar su estructura ni su lógica existente.
+
+⸻
+
+PROBLEMAS QUE DEBE REPARAR:
+	1.	Las imágenes no se están guardando correctamente al subir o editar actividades.
+	2.	Las actividades nuevas no se registran bien en la base de datos.
+	3.	En “Mis actividades” y en los perfiles de otros usuarios no se muestra la cantidad de palabras.
+	4.	El dashboard no carga correctamente las imágenes.
+	5.	Las estadísticas (trazos, palabras, actividades) no se actualizan automáticamente al subir, editar o borrar actividades.
+	6.	El ranking no refleja los cambios de estadísticas.
+	7.	El cálculo automático de trazos por tipo de actividad y cantidad de palabras no siempre funciona correctamente.
+
+⸻
+
+FUNCIONALIDADES EXISTENTES QUE DEBEN RESPETARSE Y FUNCIONAR:
+	•	Registro con nombre, edad, cumpleaños (dd/mm), face claim, firma (con #), motivo de ingreso y link de Facebook.
+	•	Al registrarse, se otorgan automáticamente 50 trazos, se guarda su cumpleaños y se genera una notificación.
+	•	Inicio de sesión solo con firma. Si existe en la DB, va a /portal.html.
+	•	Portal con menú navegable a: Panel Admin (solo si es admin), Dashboard, Noticias, Avisos, Actividades por realizar, Subir actividad, Rankings.
+	•	En el perfil se muestran: nombre, edad, cumpleaños, firma, Facebook, fecha de registro, total de trazos, total de palabras, total de actividades. También “Mis actividades” con nombre, palabras, trazos, arista, álbum e imagen, ordenadas de más recientes a más antiguas.
+	•	Edición permitida solo en nombre, edad, cumpleaños, Facebook. Lo demás solo puede cambiarlo un admin.
+	•	Subir actividad incluye: nombre, fecha, cantidad de palabras, tipo (Narrativa, Microcuento, Drabble, Hilo, Rol, Otro), respuestas (si aplica), link, descripción, imagen, arista y álbum.
+	•	El sistema asigna automáticamente trazos según:
+	•	Microcuento: 100 trazos
+	•	Drabble: 200 trazos
+	•	Narrativa: 201 a 499 palabras (300 trazos), 500 a 999 (400), 1000 a 1499 (500), etc.
+	•	Hilo: base 100 +50 por cada 5 respuestas
+	•	Rol: base 250 +150 por cada 5 respuestas
+	•	Otros tipos como Collage, Poema, Pintura, etc. también tienen trazos específicos
+	•	Ranking global por trazos y por palabras, ordenado de mayor a menor, con acordeón que muestra perfil resumen de cada usuario.
+	•	Si hoy es cumpleaños de un usuario:
+	•	Se le suman 100 trazos automáticamente.
+	•	Recibe una notificación.
+	•	Se genera una noticia global de felicitación.
+	•	Panel de administración funcional:
+	•	Formulario para asignar trazos manualmente.
+	•	Elige usuarios, título, mensaje, cantidad.
+	•	Suma trazos, envía notificación, crea noticia global, actualiza estadísticas.
+
+⸻
+
+ESTRUCTURA DEL PROYECTO:
+	•	El frontend está en la carpeta /public.
+	•	Se debe usar app.use(express.static('public')) para que Render lo sirva bien.
+	•	El servidor se ejecuta con node server.js.
+	•	Usa el módulo pg para PostgreSQL.
+	•	La conexión es con process.env.DATABASE_URL.
+	•	No se deben usar archivos locales para usuarios ni actividades. Todo va en PostgreSQL.
+	•	Al iniciar el backend, debe detectar si faltan tablas y crearlas automáticamente si es necesario.
+	•	Toda la web debe ser responsive: adaptable a celulares, tablets y escritorio.
+	•	El menú y la navegación deben funcionar bien en pantallas pequeñas.

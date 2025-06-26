@@ -3,14 +3,18 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import axios from "axios";
+import * as cheerio from "cheerio";
 import { storage } from "./storage";
 import { 
   insertUserSchema, 
   insertActivitySchema, 
   insertNewsSchema, 
   insertAnnouncementSchema, 
-  insertPlannedActivitySchema 
+  insertPlannedActivitySchema,
+  bonusHistory
 } from "@shared/schema";
+import { db } from "./db";
 import { calculateTraces, calculateExpressActivityTraces } from "../client/src/lib/trace-calculator.js";
 import { PushNotificationService } from "./push-notifications";
 
@@ -18,6 +22,106 @@ import { PushNotificationService } from "./push-notifications";
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Image extraction utilities
+async function extractImageFromUrl(url: string): Promise<string | null> {
+  try {
+    // Check if URL is a direct image
+    if (isDirectImageUrl(url)) {
+      return await downloadAndSaveImage(url);
+    }
+
+    // Extract image from webpage
+    const response = await axios.get(url, {
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+
+    const $ = cheerio.load(response.data);
+    
+    // Priority order for finding images
+    let imageUrl = null;
+
+    // 1. Try og:image meta tag
+    imageUrl = $('meta[property="og:image"]').attr('content');
+    
+    // 2. Try twitter:image meta tag
+    if (!imageUrl) {
+      imageUrl = $('meta[name="twitter:image"]').attr('content');
+    }
+
+    // 3. Try first relevant img tag
+    if (!imageUrl) {
+      const imgTags = $('img');
+      for (let i = 0; i < imgTags.length; i++) {
+        const src = $(imgTags[i]).attr('src');
+        if (src && !src.includes('icon') && !src.includes('logo') && !src.includes('avatar')) {
+          imageUrl = src;
+          break;
+        }
+      }
+    }
+
+    if (imageUrl) {
+      // Make URL absolute if relative
+      if (imageUrl.startsWith('/')) {
+        const urlObj = new URL(url);
+        imageUrl = `${urlObj.protocol}//${urlObj.host}${imageUrl}`;
+      } else if (imageUrl.startsWith('//')) {
+        const urlObj = new URL(url);
+        imageUrl = `${urlObj.protocol}${imageUrl}`;
+      }
+
+      return await downloadAndSaveImage(imageUrl);
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error extracting image from URL:', error);
+    return null;
+  }
+}
+
+function isDirectImageUrl(url: string): boolean {
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+  const urlLower = url.toLowerCase();
+  return imageExtensions.some(ext => urlLower.includes(ext));
+}
+
+async function downloadAndSaveImage(imageUrl: string): Promise<string | null> {
+  try {
+    const response = await axios.get(imageUrl, {
+      responseType: 'stream',
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const extension = getImageExtension(imageUrl) || '.jpg';
+    const filename = `extracted-${uniqueSuffix}${extension}`;
+    const filepath = path.join(uploadDir, filename);
+
+    const writer = fs.createWriteStream(filepath);
+    response.data.pipe(writer);
+
+    return new Promise((resolve, reject) => {
+      writer.on('finish', () => resolve(`/uploads/${filename}`));
+      writer.on('error', reject);
+    });
+  } catch (error) {
+    console.error('Error downloading image:', error);
+    return null;
+  }
+}
+
+function getImageExtension(url: string): string | null {
+  const match = url.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i);
+  return match ? `.${match[1].toLowerCase()}` : null;
 }
 
 const upload = multer({
@@ -45,30 +149,27 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // File upload route
-  app.post("/api/upload-image", upload.single('file'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No se ha subido ningún archivo" });
-      }
-
-      const imagePath = req.file.filename;
-      res.json({ imagePath });
-    } catch (error: any) {
-      console.error("Error uploading image:", error);
-      res.status(500).json({ message: error.message || "Error al subir la imagen" });
-    }
+  // Health check route
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Serve uploaded images
-  app.get("/api/images/:filename", (req, res) => {
-    const filename = req.params.filename;
-    const imagePath = path.join(uploadDir, filename);
-    
-    if (fs.existsSync(imagePath)) {
-      res.sendFile(imagePath);
-    } else {
-      res.status(404).json({ message: "Imagen no encontrada" });
+  // Test bonus history table
+  app.get("/api/test-bonus-history", async (req, res) => {
+    try {
+      const result = await db.select().from(bonusHistory).limit(5);
+      res.json({ 
+        status: "ok", 
+        tableExists: true, 
+        sampleData: result,
+        count: result.length 
+      });
+    } catch (error: any) {
+      res.json({ 
+        status: "error", 
+        tableExists: false, 
+        error: error.message 
+      });
     }
   });
 
@@ -137,18 +238,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const updates = req.body;
+      
+      // Log the update for debugging
+      console.log(`Updating user ${id} with:`, updates);
+      
       const user = await storage.updateUser(id, updates);
 
-      // Enviar notificación a administradores
-      await PushNotificationService.sendNotificationToAdmins({
-        title: "Perfil Actualizado",
-        body: `${user.signature} ha actualizado su perfil`,
-        type: "profile_update",
-        url: `/usuario/${user.id}`
-      });
+      // Enviar notificación a administradores si no es una actualización administrativa
+      if (!req.body.adminUpdate) {
+        await PushNotificationService.sendNotificationToAdmins({
+          title: "Perfil Actualizado",
+          body: `${user.signature} ha actualizado su perfil`,
+          type: "profile_update",
+          url: `/usuario/${user.id}`
+        });
+      } else {
+        // Si es una actualización administrativa, notificar al usuario afectado
+        await storage.createNotification({
+          userId: id,
+          title: "Perfil Actualizado por Admin",
+          content: "Un administrador ha actualizado tu perfil. Los cambios se reflejarán inmediatamente.",
+          type: "admin_update"
+        });
+      }
 
+      console.log(`User ${id} updated successfully:`, { ...user, password: undefined });
+      
       res.json({ ...user, password: undefined });
     } catch (error: any) {
+      console.error(`Error updating user ${id}:`, error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -174,6 +292,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de usuario requerido" });
       }
 
+      // Default image URL for activities
+      const defaultImageUrl = "https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA";
+
+      // Process image from link if provided
+      let finalImageUrl = activityData.image_url?.trim() || defaultImageUrl;
+      
+      if (activityData.link?.trim()) {
+        console.log('Extracting image from link:', activityData.link);
+        const extractedImageUrl = await extractImageFromUrl(activityData.link.trim());
+        if (extractedImageUrl) {
+          finalImageUrl = extractedImageUrl;
+          console.log('Successfully extracted image:', extractedImageUrl);
+        }
+      }
+
       // Clean and validate the activity data
       const cleanData = {
         name: activityData.name?.trim(),
@@ -182,16 +315,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: activityData.type,
         responses: activityData.responses ? parseInt(activityData.responses) : undefined,
         link: activityData.link?.trim() || undefined,
-        image_path: activityData.imagePath?.trim() || "",
+        image_url: finalImageUrl,
         description: activityData.description?.trim(),
         arista: activityData.arista,
         album: activityData.album,
       };
 
-      // Validate using schema - make image_path optional
+      // Validate using schema
       const validatedData = {
         ...cleanData,
-        image_path: cleanData.image_path || "", // Ensure it's never undefined
+        image_url: cleanData.image_url || "", // Ensure it's never undefined
       };
 
       console.log("Validated data:", validatedData);
@@ -301,6 +434,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/news/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { title, content } = req.body;
+      
+      if (!title || !content) {
+        return res.status(400).json({ message: "Título y contenido requeridos" });
+      }
+
+      const updatedNews = await storage.updateNews(id, { title, content });
+      res.json(updatedNews);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/news/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteNews(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Announcement routes
   app.post("/api/announcements", async (req, res) => {
     try {
@@ -339,6 +498,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/announcements/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { title, content } = req.body;
+      
+      if (!title || !content) {
+        return res.status(400).json({ message: "Título y contenido requeridos" });
+      }
+
+      const updatedAnnouncement = await storage.updateAnnouncement(id, { title, content });
+      res.json(updatedAnnouncement);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/announcements/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteAnnouncement(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Planned activities routes
   app.post("/api/planned-activities", async (req, res) => {
     try {
@@ -364,6 +549,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const activities = await storage.getAllPlannedActivities();
       res.json(activities);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/planned-activities/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deletePlannedActivity(id);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -463,10 +658,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update activity
-  app.put("/api/activities/:id", upload.single('file'), async (req, res) => {
+  app.put("/api/activities/:id", async (req, res) => {
     try {
       const activityId = parseInt(req.params.id);
-      const { userId, name, date, wordCount, type, responses, link, imagePath, description, arista, album } = req.body;
+      const { userId, name, date, wordCount, type, responses, link, imageUrl, description, arista, album } = req.body;
+
+      console.log("Updating activity:", activityId, "with data:", req.body);
 
       if (!userId) {
         return res.status(400).json({ message: "ID de usuario requerido" });
@@ -482,41 +679,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "No tienes permisos para editar esta actividad" });
       }
 
-      // Handle image upload if new file is provided
-      let finalImagePath = imagePath || activity.image_path;
-      if (req.file) {
-        finalImagePath = req.file.filename;
-      }
-
       // Calculate new traces
       const traces = calculateTraces(type, parseInt(wordCount) || 0, responses ? parseInt(responses) : undefined);
+
+      // Default image URL for activities
+      const defaultImageUrl = "https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA";
+
+      // Process image from link if provided but no imageUrl
+      let finalImageUrl = imageUrl?.trim() || activity.image_url || defaultImageUrl;
+      
+      if (link?.trim() && (!imageUrl || imageUrl.trim() === "")) {
+        console.log('Extracting image from link for update:', link);
+        const extractedImageUrl = await extractImageFromUrl(link.trim());
+        if (extractedImageUrl) {
+          finalImageUrl = extractedImageUrl;
+          console.log('Successfully extracted image for update:', extractedImageUrl);
+        }
+      }
 
       // Clean and validate the activity data
       const cleanData = {
         name: name?.trim(),
-        date: date ? new Date(date) : activity.date, // Convert string to Date object
+        date: date ? new Date(date) : activity.date,
         word_count: parseInt(wordCount) || activity.word_count,
         type: type,
-        responses: responses ? parseInt(responses) : undefined,
-        link: link?.trim() || undefined,
-        image_path: finalImagePath,
+        responses: responses ? parseInt(responses) : activity.responses,
+        link: link?.trim() || activity.link,
+        image_url: finalImageUrl,
         description: description?.trim(),
         arista: arista,
         album: album,
+        traces,
       };
 
-      // Validate using schema (make image_path optional for updates)
-      const validatedData = {
-        ...cleanData,
-        image_path: finalImagePath || activity.image_path, // Keep existing if no new image
-      };
+      console.log("Clean data for update:", cleanData);
 
       // Update the activity
-      const updatedActivity = await storage.updateActivity(activityId, {
-        ...validatedData,
-        userId: parseInt(userId),
-        traces,
-      });
+      const updatedActivity = await storage.updateActivity(activityId, cleanData);
 
       // Update user stats after updating activity
       await storage.updateUserStats(parseInt(userId));
@@ -524,9 +723,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get updated user stats
       const updatedUser = await storage.getUser(parseInt(userId));
 
+      console.log("Activity updated successfully:", updatedActivity.id);
+
       res.json({ 
         activity: updatedActivity, 
-        user: updatedUser ? { ...updatedUser, password: undefined } : null 
+        user: updatedUser ? { ...updatedUser, password: undefined } : null,
+        success: true
       });
     } catch (error: any) {
       console.error("Error updating activity:", error);
@@ -538,7 +740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.status(500).json({ message: error.message || "Failed to update activity" });
+      res.status(500).json({ message: error.message || "Error al actualizar la actividad" });
     }
   });
 
@@ -561,6 +763,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error refreshing user stats:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Manual traces assignment endpoint
+  app.post("/api/users/:id/assign-traces", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { additionalTraces, reason, adminId } = req.body;
+
+      if (!additionalTraces || additionalTraces <= 0) {
+        return res.status(400).json({ message: "Cantidad de trazos inválida" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      const newTotal = (user.totalTraces || 0) + parseInt(additionalTraces);
+      
+      await storage.updateUser(userId, { totalTraces: newTotal });
+
+      // Create bonus history entry
+      await storage.createBonusHistory({
+        userId,
+        title: "Asignación Manual de Trazos",
+        traces: parseInt(additionalTraces),
+        type: "admin_assignment",
+        assignedById: adminId || null,
+        reason: reason || "Asignación manual de trazos"
+      });
+
+      // Crear notificación para el usuario
+      await storage.createNotification({
+        userId,
+        title: "Trazos Asignados",
+        content: `Se te han asignado ${additionalTraces} trazos adicionales. ${reason ? `Motivo: ${reason}` : ''}`,
+        type: "trace_assignment"
+      });
+
+      const updatedUser = await storage.getUser(userId);
+
+      res.json({ 
+        success: true, 
+        user: { ...updatedUser, password: undefined },
+        message: `${additionalTraces} trazos asignados correctamente`
+      });
+    } catch (error: any) {
+      console.error("Error assigning traces:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get user bonus history
+  app.get("/api/users/:id/bonus-history", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      console.log(`Getting bonus history for user ${userId}`);
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "ID de usuario inválido" });
+      }
+      
+      const bonusHistory = await storage.getUserBonusHistory(userId);
+      console.log(`Found ${bonusHistory.length} bonus history entries for user ${userId}`);
+      res.json(bonusHistory);
+    } catch (error: any) {
+      console.error("Error getting bonus history:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -599,6 +870,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error deleting activity:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin trace assignment
+  app.post("/api/admin/assign-traces", async (req, res) => {
+    try {
+      const { title, date, selectedUsers, reason, tracesAmount, adminId } = req.body;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions
+      const admin = await storage.getUser(parseInt(adminId));
+      if (!admin || admin.role !== "admin") {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      if (!selectedUsers || selectedUsers.length === 0) {
+        return res.status(400).json({ message: "Debes seleccionar al menos un usuario" });
+      }
+
+      // Create trace assignment record
+      const assignment = await storage.createTraceAssignment({
+        title,
+        date: new Date(date),
+        reason,
+        tracesAmount: parseInt(tracesAmount),
+        adminId: parseInt(adminId),
+        userIds: selectedUsers.map((id: number) => parseInt(id)),
+      });
+
+      // Update user traces for each selected user
+      for (const userId of selectedUsers) {
+        const user = await storage.getUser(parseInt(userId));
+        if (user) {
+          const newTotal = (user.totalTraces || 0) + parseInt(tracesAmount);
+          await storage.updateUser(parseInt(userId), { totalTraces: newTotal });
+
+          // Create bonus history entry
+          await storage.createBonusHistory({
+            userId: parseInt(userId),
+            title: title,
+            traces: parseInt(tracesAmount),
+            type: "admin_assignment",
+            assignedById: parseInt(adminId),
+            reason: reason
+          });
+
+          // Create notification for each user
+          await storage.createNotification({
+            userId: parseInt(userId),
+            title: "Trazos Asignados",
+            message: `Se te han asignado ${tracesAmount} trazos. Motivo: ${reason}`,
+            type: "trace_assignment"
+          });
+        }
+      }
+
+      res.json({ success: true, assignment });
+    } catch (error: any) {
+      console.error("Error assigning traces:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin activity management - Edit activity
+  app.put("/api/admin/activities/:id", async (req, res) => {
+    try {
+      const activityId = parseInt(req.params.id);
+      const { adminId, ...activityData } = req.body;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions
+      const admin = await storage.getUser(parseInt(adminId));
+      if (!admin || admin.role !== "admin") {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      // Get the activity to know which user to update stats for
+      const activity = await storage.getActivity(activityId);
+      if (!activity) {
+        return res.status(404).json({ message: "Actividad no encontrada" });
+      }
+
+      // Calculate new traces
+      const traces = calculateTraces(activityData.type, parseInt(activityData.wordCount) || 0, activityData.responses ? parseInt(activityData.responses) : undefined);
+
+      // Clean and validate the activity data
+      const cleanData = {
+        name: activityData.name?.trim(),
+        date: activityData.date ? new Date(activityData.date) : activity.date,
+        word_count: parseInt(activityData.wordCount) || activity.word_count,
+        type: activityData.type,
+        responses: activityData.responses ? parseInt(activityData.responses) : activity.responses,
+        link: activityData.link?.trim() || activity.link,
+        image_url: activityData.imageUrl?.trim() || activity.image_url,
+        description: activityData.description?.trim(),
+        arista: activityData.arista,
+        album: activityData.album,
+      };
+
+      // Update the activity
+      const updatedActivity = await storage.updateActivity(activityId, {
+        ...cleanData,
+        traces,
+      });
+
+      // Update user stats
+      await storage.updateUserStats(activity.userId);
+
+      res.json({ activity: updatedActivity, success: true });
+    } catch (error: any) {
+      console.error("Error updating activity (admin):", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin activity management - Delete activity
+  app.delete("/api/admin/activities/:id", async (req, res) => {
+    try {
+      const activityId = parseInt(req.params.id);
+      const { adminId } = req.body;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions
+      const admin = await storage.getUser(parseInt(adminId));
+      if (!admin || admin.role !== "admin") {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      // Get the activity to know which user to update stats for
+      const activity = await storage.getActivity(activityId);
+      if (!activity) {
+        return res.status(404).json({ message: "Actividad no encontrada" });
+      }
+
+      // Delete the activity (admin can delete any activity)
+      await storage.adminDeleteActivity(activityId);
+
+      // Update user stats
+      await storage.updateUserStats(activity.userId);
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting activity (admin):", error);
       res.status(500).json({ message: error.message });
     }
   });

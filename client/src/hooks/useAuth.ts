@@ -2,46 +2,41 @@ import { useState, useEffect } from "react";
 import type { User } from "@shared/schema";
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
-  useEffect(() => {
-    // Check localStorage for user data
-    const storedUser = localStorage.getItem("introspens_user");
-    if (storedUser) {
+  const updateUser = (userData: User) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const refreshUser = async () => {
+    if (user?.id) {
       try {
-        setUser(JSON.parse(storedUser));
+        const response = await fetch(`/api/users/${user.id}`);
+        if (response.ok) {
+          const userData = await response.json();
+          updateUser(userData);
+          return userData;
+        }
       } catch (error) {
-        localStorage.removeItem("introspens_user");
+        console.error('Error refreshing user data:', error);
       }
     }
-    setIsLoading(false);
-  }, []);
+    return null;
+  };
 
   const login = (userData: User) => {
     setUser(userData);
-    localStorage.setItem("introspens_user", JSON.stringify(userData));
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("introspens_user");
+    localStorage.removeItem('user');
   };
 
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      localStorage.setItem("introspens_user", JSON.stringify(updatedUser));
-    }
-  };
-
-  return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    login,
-    logout,
-    updateUser,
-  };
+  return { user, login, updateUser, refreshUser, logout };
 }
