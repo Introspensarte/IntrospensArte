@@ -261,26 +261,14 @@ export class DatabaseStorage implements IStorage {
       // Add initial 50 traces to activity traces (given at registration)
       const totalTraces = activityTraces + 50;
 
-      // Calculate rank based on total traces
-      let rank = "Alma en tránsito";
-      if (totalTraces >= 5000) {
-        rank = "Arquitecto del alma";
-      } else if (totalTraces >= 2000) {
-        rank = "Escritor de introspecciones";
-      } else if (totalTraces >= 800) {
-        rank = "Narrador de atmósferas";
-      } else if (totalTraces >= 200) {
-        rank = "Voz en boceto";
-      }
-
-      // Update user stats with current database values
+      // Don't automatically update rank - only admins can change ranks
+      // Update user stats with current database values (keeping existing rank)
       const [updatedUser] = await db
         .update(users)
         .set({
           totalTraces,
           totalWords,
           totalActivities,
-          rank,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId))
@@ -373,8 +361,48 @@ export class DatabaseStorage implements IStorage {
     await db.delete(announcements).where(eq(announcements.id, id));
   }
 
+  async getNewsViewers(newsId: number): Promise<Array<{ user: User; viewedAt: string }>> {
+    return await db
+      .select({
+        user: users,
+        viewedAt: sql<string>`to_char(${notifications.createdAt}, 'YYYY-MM-DD HH24:MI:SS')`,
+      })
+      .from(notifications)
+      .innerJoin(users, eq(notifications.userId, users.id))
+      .where(
+        and(
+          eq(notifications.type, "news_view"),
+          sql`${notifications.content} LIKE '%newsId:${newsId}%'`
+        )
+      )
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getAnnouncementViewers(announcementId: number): Promise<Array<{ user: User; viewedAt: string }>> {
+    return await db
+      .select({
+        user: users,
+        viewedAt: sql<string>`to_char(${notifications.createdAt}, 'YYYY-MM-DD HH24:MI:SS')`,
+      })
+      .from(notifications)
+      .innerJoin(users, eq(notifications.userId, users.id))
+      .where(
+        and(
+          eq(notifications.type, "announcement_view"),
+          sql`${notifications.content} LIKE '%announcementId:${announcementId}%'`
+        )
+      )
+      .orderBy(desc(notifications.createdAt));
+  }
+
   async createPlannedActivity(activityData: InsertPlannedActivity & { authorId: number }): Promise<PlannedActivity> {
-    const [activity] = await db.insert(plannedActivities).values(activityData).returning();
+    // Convert deadline string to Date if provided
+    const processedData = {
+      ...activityData,
+      deadline: activityData.deadline ? new Date(activityData.deadline) : null
+    };
+
+    const [activity] = await db.insert(plannedActivities).values(processedData).returning();
 
     // Create notification for all users
     await this.createNotificationForAllUsers(
@@ -393,6 +421,8 @@ export class DatabaseStorage implements IStorage {
         description: plannedActivities.description,
         arista: plannedActivities.arista,
         album: plannedActivities.album,
+        deadline: plannedActivities.deadline,
+        facebookLink: plannedActivities.facebookLink,
         authorId: plannedActivities.authorId,
         createdAt: plannedActivities.createdAt,
         author: users,
@@ -654,21 +684,47 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getAllPlannedActivities(): Promise<Array<PlannedActivity & { author: User }>> {
+  async updatePlannedActivity(id: number, updates: Partial<PlannedActivity>): Promise<PlannedActivity> {
+    // Convert deadline string to Date if provided
+    const processedUpdates = {
+      ...updates,
+      deadline: updates.deadline ? new Date(updates.deadline) : updates.deadline
+    };
+
+    const [updatedActivity] = await db
+      .update(plannedActivities)
+      .set(processedUpdates)
+      .where(eq(plannedActivities.id, id))
+      .returning();
+    return updatedActivity;
+  }
+
+  async getExpiredExpressActivities(): Promise<PlannedActivity[]> {
+    const now = new Date();
     return await db
-      .select({
-        id: plannedActivities.id,
-        title: plannedActivities.title,
-        description: plannedActivities.description,
-        arista: plannedActivities.arista,
-        album: plannedActivities.album,
-        authorId: plannedActivities.authorId,
-        createdAt: plannedActivities.createdAt,
-        author: users,
-      })
+      .select()
       .from(plannedActivities)
-      .leftJoin(users, eq(plannedActivities.authorId, users.id))
-      .orderBy(desc(plannedActivities.createdAt));
+      .where(
+        and(
+          eq(plannedActivities.arista, "express"),
+          eq(plannedActivities.album, "actividad-express"),
+          sql`${plannedActivities.deadline} < ${now}`
+        )
+      );
+  }
+
+  async moveExpiredActivitiesToTardia(): Promise<void> {
+    const now = new Date();
+    await db
+      .update(plannedActivities)
+      .set({ album: "actividad-tardia" })
+      .where(
+        and(
+          eq(plannedActivities.arista, "express"),
+          eq(plannedActivities.album, "actividad-express"),
+          sql`${plannedActivities.deadline} < ${now}`
+        )
+      );
   }
 
   async deletePlannedActivity(id: number): Promise<void> {
@@ -705,7 +761,7 @@ export class DatabaseStorage implements IStorage {
         .from(bonusHistory)
         .where(eq(bonusHistory.userId, userId))
         .orderBy(desc(bonusHistory.createdAt));
-      
+
       console.log(`Retrieved ${result.length} bonus history entries for user ${userId}`);
       return result;
     } catch (error) {

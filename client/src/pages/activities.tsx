@@ -1,29 +1,98 @@
-
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, Eye, ExternalLink } from "lucide-react";
-import { useState } from "react";
 import { ARISTAS } from "@/lib/constants";
+import { ChevronDown, ChevronUp, ExternalLink, Calendar, Clock, AlertTriangle } from "lucide-react";
 import type { PlannedActivity } from "@shared/schema";
 
+interface ActivityWithTimer extends PlannedActivity {
+  timeRemaining?: string;
+  isExpired?: boolean;
+}
+
 export default function Activities() {
+  const [expandedActivity, setExpandedActivity] = useState<number | null>(null);
+  const [activitiesWithTimers, setActivitiesWithTimers] = useState<ActivityWithTimer[]>([]);
+  const [openAristas, setOpenAristas] = useState<string[]>([]);
+
   const { data: activities = [], isLoading } = useQuery<PlannedActivity[]>({
     queryKey: ["/api/planned-activities"],
   });
 
-  const [openAristas, setOpenAristas] = useState<string[]>([]);
-  const [expandedActivity, setExpandedActivity] = useState<number | null>(null);
+  console.log("Loaded activities:", activities);
+
+  useEffect(() => {
+    if (activities.length === 0) return;
+
+    const calculateTimeRemaining = () => {
+      const now = new Date();
+      const updatedActivities = activities.map(activity => {
+        if (activity.arista === "actividades-express" && activity.album === "actividad-express" && activity.deadline) {
+          const deadline = new Date(activity.deadline);
+          const timeDiff = deadline.getTime() - now.getTime();
+
+          if (timeDiff <= 0) {
+            return { ...activity, timeRemaining: "¡Tiempo agotado!", isExpired: true };
+          }
+
+          const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+          let timeString = "";
+          if (days > 0) timeString += `${days}d `;
+          if (hours > 0) timeString += `${hours}h `;
+          if (minutes > 0) timeString += `${minutes}m `;
+          if (days === 0 && hours === 0) timeString += `${seconds}s`;
+
+          return { ...activity, timeRemaining: timeString.trim(), isExpired: false };
+        }
+        return { ...activity, timeRemaining: undefined, isExpired: false };
+      });
+
+      setActivitiesWithTimers(updatedActivities);
+    };
+
+    // Calcular inmediatamente
+    calculateTimeRemaining();
+
+    // Configurar intervalo
+    const intervalId = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [activities]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-soft-lavender"></div>
+        <div className="text-soft-lavender">Cargando actividades...</div>
       </div>
     );
   }
+
+  const toggleActivity = (activityId: number) => {
+    setExpandedActivity(prev => prev === activityId ? null : activityId);
+  };
+
+  // Group activities by arista and album
+  const groupedActivities = activitiesWithTimers.reduce((acc, activity) => {
+    console.log(`Processing activity: ${activity.title}, arista: ${activity.arista}, album: ${activity.album}`);
+    if (!acc[activity.arista]) {
+      acc[activity.arista] = {};
+    }
+    if (!acc[activity.arista][activity.album]) {
+      acc[activity.arista][activity.album] = [];
+    }
+    acc[activity.arista][activity.album].push(activity);
+    return acc;
+  }, {} as { [arista: string]: { [album: string]: ActivityWithTimer[] } });
+
+  console.log("Grouped activities:", groupedActivities);
 
   const toggleArista = (aristaKey: string) => {
     setOpenAristas(prev => 
@@ -33,9 +102,6 @@ export default function Activities() {
     );
   };
 
-  const toggleActivity = (activityId: number) => {
-    setExpandedActivity(prev => prev === activityId ? null : activityId);
-  };
 
   return (
     <div className="min-h-screen py-20 px-6">
@@ -51,8 +117,8 @@ export default function Activities() {
         <div className="space-y-4">
           {Object.entries(ARISTAS).map(([aristaKey, arista]) => {
             const isOpen = openAristas.includes(aristaKey);
-            const aristaActivities = activities.filter(activity => activity.arista === aristaKey);
-            
+            const aristaActivities = activitiesWithTimers.filter(activity => activity.arista === aristaKey);
+
             return (
               <Collapsible key={aristaKey} open={isOpen} onOpenChange={() => toggleArista(aristaKey)}>
                 <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
@@ -75,12 +141,12 @@ export default function Activities() {
                       </div>
                     </CardHeader>
                   </CollapsibleTrigger>
-                  
+
                   <CollapsibleContent>
                     <CardContent className="pt-0">
                       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {arista.albums.map((album) => {
-                          const albumActivities = activities.filter(
+                          const albumActivities = activitiesWithTimers.filter(
                             (activity) => activity.arista === aristaKey && activity.album === album.id
                           );
 
@@ -92,91 +158,85 @@ export default function Activities() {
                               <h4 className="font-semibold text-white mb-3 text-center border-b border-medium-gray/20 pb-2">
                                 {album.name}
                               </h4>
-                              
-                              {albumActivities.length > 0 ? (
-                                <div className="space-y-3">
-                                  {albumActivities.map((activity) => (
-                                    <div key={activity.id} className="space-y-2">
-                                      <div className="p-3 bg-black/30 rounded border border-medium-gray/10">
-                                        <div className="flex items-center justify-between mb-2">
-                                          <h5 className="font-medium text-soft-lavender text-sm">
-                                            {activity.title}
-                                          </h5>
-                                          <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-400">
-                                            Disponible
-                                          </Badge>
-                                        </div>
-                                        
-                                        {expandedActivity === activity.id ? (
-                                          <div className="space-y-2">
-                                            <p className="text-xs text-light-gray leading-relaxed">
-                                              {activity.description}
-                                            </p>
-                                            {activity.deadline && (
-                                              <div className="text-xs text-orange-400 bg-orange-500/10 p-2 rounded">
-                                                <strong>Fecha límite:</strong> {new Date(activity.deadline).toLocaleDateString()}
-                                              </div>
-                                            )}
-                                            <div className="flex justify-between items-center pt-2 border-t border-medium-gray/20">
-                                              <div className="flex items-center space-x-2">
-                                                <span className="text-xs text-medium-gray">
-                                                  Publicado: {new Date(activity.createdAt!).toLocaleDateString()}
-                                                </span>
-                                                {activity.facebookLink && (
-                                                  <a
-                                                    href={activity.facebookLink}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center space-x-1"
-                                                  >
-                                                    <ExternalLink className="h-3 w-3" />
-                                                    <span>Ver en Facebook</span>
-                                                  </a>
-                                                )}
-                                              </div>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => toggleActivity(activity.id!)}
-                                                className="text-xs text-soft-lavender hover:text-white"
-                                              >
-                                                Ver menos
-                                              </Button>
-                                            </div>
-                                          </div>
+                              <div className="space-y-3">
+                          {albumActivities.map((activity) => (
+                            <Card key={activity.id} className={`bg-medium-gray/20 border-medium-gray/30 hover:border-soft-lavender/30 transition-all ${activity.isExpired ? 'border-red-500/50' : ''}`}>
+                              <CardHeader>
+                                <div className="flex items-center justify-between">
+                                  <CardTitle className="text-white text-base">{activity.title}</CardTitle>
+                                  <div className="flex items-center space-x-2">
+                                    {activity.timeRemaining && (
+                                      <div className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-mono ${
+                                        activity.isExpired 
+                                          ? 'bg-red-500/20 text-red-400' 
+                                          : 'bg-orange-500/20 text-orange-400'
+                                      }`}>
+                                        {activity.isExpired ? (
+                                          <AlertTriangle className="w-3 h-3" />
                                         ) : (
-                                          <div className="flex justify-between items-center">
-                                            <p className="text-xs text-light-gray line-clamp-2">
-                                              {activity.description.length > 60 
-                                                ? `${activity.description.substring(0, 60)}...` 
-                                                : activity.description
-                                              }
-                                            </p>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => toggleActivity(activity.id!)}
-                                              className="text-xs text-soft-lavender hover:text-white flex items-center gap-1"
-                                            >
-                                              <Eye className="h-3 w-3" />
-                                              Ver más
-                                            </Button>
-                                          </div>
+                                          <Clock className="w-3 h-3" />
                                         )}
+                                        <span>{activity.timeRemaining}</span>
                                       </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="text-center py-6">
-                                  <div className="text-medium-gray text-sm mb-1">
-                                    No hay actividades disponibles aún
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => toggleActivity(activity.id)}
+                                      className="text-light-gray hover:text-white"
+                                    >
+                                      {expandedActivity === activity.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    </Button>
                                   </div>
-                                  <div className="text-xs text-medium-gray">
-                                    Las actividades aparecerán aquí cuando los administradores las publiquen
-                                  </div>
                                 </div>
+                                <div className="flex items-center space-x-2 text-sm text-light-gray">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>{new Date(activity.createdAt!).toLocaleDateString()}</span>
+                                  {activity.deadline && activity.arista === "actividades-express" && activity.album === "actividad-express" && (
+                                    <>
+                                      <span>•</span>
+                                      <span>Límite: {new Date(activity.deadline).toLocaleDateString()} {new Date(activity.deadline).toLocaleTimeString()}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </CardHeader>
+                              {expandedActivity === activity.id && (
+                                <CardContent className="pt-0">
+                                  <Separator className="mb-4 bg-medium-gray/30" />
+                                  <div className="space-y-4">
+                                    <p className="text-light-gray leading-relaxed">{activity.description}</p>
+
+                                    {activity.isExpired && (
+                                      <div className="bg-red-500/10 border border-red-500/20 rounded p-3">
+                                        <div className="flex items-center space-x-2 text-red-400">
+                                          <AlertTriangle className="w-4 h-4" />
+                                          <span className="text-sm font-medium">Actividad Expirada</span>
+                                        </div>
+                                        <p className="text-xs text-red-300 mt-1">
+                                          Esta actividad ha pasado su fecha límite y se ha movido automáticamente a "Actividad Tardía".
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {activity.facebookLink && (
+                                      <Button
+                                        asChild
+                                        variant="outline"
+                                        size="sm"
+                                        className="border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+                                      >
+                                        <a href={activity.facebookLink} target="_blank" rel="noopener noreferrer">
+                                          <ExternalLink className="w-4 h-4 mr-2" />
+                                          Ver en Facebook
+                                        </a>
+                                      </Button>
+                                    )}
+                                  </div>
+                                </CardContent>
                               )}
+                            </Card>
+                          ))}
+                        </div>
                             </div>
                           );
                         })}

@@ -78,7 +78,8 @@ export default function Login() {
                       <Input
                         {...field}
                         placeholder="Tu firma (ej: #MiFirma)"
-                        className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
+                        className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender uppercase"
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                       />
                     </FormControl>
                     <FormMessage />

@@ -201,8 +201,12 @@ export const insertPlannedActivitySchema = createInsertSchema(plannedActivities)
   id: true,
   createdAt: true,
 }).extend({
-  deadline: z.string().optional(),
-  facebookLink: z.string().url().optional(),
+  deadline: z.string().optional().nullable().transform((val) => {
+    if (!val || val === '') return null;
+    const date = new Date(val);
+    return isNaN(date.getTime()) ? null : date;
+  }),
+  facebookLink: z.string().url().optional().or(z.literal("")).or(z.undefined()),
 });
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({

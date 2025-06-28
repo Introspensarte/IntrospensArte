@@ -55,15 +55,16 @@ export default function UploadActivity() {
   const watchType = form.watch("type");
   const watchWordCount = form.watch("wordCount");
   const watchResponses = form.watch("responses");
+  const watchAlbum = form.watch("album");
 
   useEffect(() => {
     if (watchType && watchWordCount && watchWordCount > 0) {
-      const traces = calculateTraces(watchType, watchWordCount, watchResponses);
+      const traces = calculateTraces(watchType, watchWordCount, watchResponses, watchAlbum);
       setCalculatedTraces(traces);
     } else {
       setCalculatedTraces(0);
     }
-  }, [watchType, watchWordCount, watchResponses]);
+  }, [watchType, watchWordCount, watchResponses, watchAlbum]);
 
   const createMutation = useMutation({
     mutationFn: async (data: ActivityForm) => {

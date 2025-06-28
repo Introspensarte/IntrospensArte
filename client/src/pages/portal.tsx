@@ -20,13 +20,13 @@ function getRankColor(rank: string) {
     case "Alma en tránsito":
       return "bg-yellow-500/20 text-yellow-400";
     case "Voz en boceto":
-      return "bg-green-500/20 text-green-400";
+      return "bg-red-500/20 text-red-400";
     case "Narrador de atmósferas":
-      return "bg-orange-800/20 text-orange-300";
+      return "bg-green-500/20 text-green-400";
     case "Escritor de introspecciones":
       return "bg-blue-500/20 text-blue-400";
     case "Arquitecto del alma":
-      return "bg-soft-lavender/20 text-soft-lavender";
+      return "bg-purple-500/20 text-purple-400";
     default:
       return "bg-gray-500/20 text-gray-400";
   }
@@ -166,7 +166,7 @@ export default function Portal() {
         </div>
 
         {/* Primary Menu Items (Dashboard and Rankings) */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           {primaryMenuItems.map((item, index) => (
             <Link key={index} href={item.href}>
               <Card className={`backdrop-blur-sm transition-all duration-300 cursor-pointer hover:scale-105 group ${
@@ -202,27 +202,25 @@ export default function Portal() {
           ))}
         </div>
 
-        {/* Grid Menu Items (2x2 grid) */}
-        <div className="grid grid-cols-2 gap-4 mb-12">
+        {/* Grid Menu Items - responsive layout */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-12">
           {gridMenuItems.map((item, index) => (
             <Link key={index} href={item.href}>
-              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 hover:border-soft-lavender/50 transition-all duration-300 cursor-pointer hover:scale-105 group aspect-square">
-                <CardContent className="p-6 h-full flex flex-col items-center justify-center text-center">
-                  <div className="w-12 h-12 bg-soft-lavender/20 rounded-lg flex items-center justify-center group-hover:bg-soft-lavender/30 transition-colors mb-4">
-                    <item.icon className="w-6 h-6 text-soft-lavender" />
+              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 hover:border-soft-lavender/50 transition-all duration-300 cursor-pointer hover:scale-105 group">
+                <CardContent className="p-4 md:p-6 h-full flex flex-col items-center justify-center text-center min-h-[140px] md:min-h-[160px]">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-soft-lavender/20 rounded-lg flex items-center justify-center group-hover:bg-soft-lavender/30 transition-colors mb-3">
+                    <item.icon className="w-5 h-5 md:w-6 md:h-6 text-soft-lavender" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-white group-hover:text-soft-lavender transition-colors mb-2">
+                  <div className="flex flex-col items-center justify-center flex-grow">
+                    <h3 className="font-semibold text-white group-hover:text-soft-lavender transition-colors mb-2 text-sm md:text-base leading-tight">
                       {item.title}
                     </h3>
-                    <p className="text-sm text-medium-gray">{item.description}</p>
+                    <p className="text-xs md:text-sm text-medium-gray leading-relaxed">{item.description}</p>
                   </div>
                 </CardContent>
               </Card>
             </Link>
           ))}
-
-
         </div>
 
         {/* Quick Stats */}

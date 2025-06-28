@@ -15,11 +15,11 @@ deploymentTarget = "autoscale"
 ignorePorts = false
 
 [workflows]
-runButton = "Dev Server"
+runButton = "Development Server"
 
 [[workflows.workflow]]
-name = "Dev Server"
-author = 44274647
+name = "Development Server"
+author = 44377945
 mode = "sequential"
 
 [[workflows.workflow.tasks]]

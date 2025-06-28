@@ -13,6 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ARISTAS, RANKS, MEDALS } from "@/lib/constants";
@@ -34,6 +35,21 @@ const plannedActivitySchema = z.object({
   description: z.string().min(1, "La descripción es requerida"),
   arista: z.string().min(1, "La arista es requerida"),
   album: z.string().min(1, "El álbum es requerido"),
+  deadline: z.string().optional().nullable(),
+  facebookLink: z.string().url().optional().or(z.literal("")).or(z.undefined()),
+}).refine((data) => {
+  // Validación condicional para actividades express
+  if (data.arista === "actividades-express" && data.album === "actividad-express") {
+    if (!data.deadline || data.deadline === '') {
+      return false;
+    }
+    const deadlineDate = new Date(data.deadline);
+    return !isNaN(deadlineDate.getTime()) && deadlineDate > new Date();
+  }
+  return true;
+}, {
+  message: "La fecha límite es requerida para actividades express y debe ser en el futuro",
+  path: ["deadline"]
 });
 
 const userUpdateSchema = z.object({
@@ -63,6 +79,11 @@ export default function Admin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [editingNews, setEditingNews] = useState<any>(null);
+    const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
+    const [editingActivity, setEditingActivity] = useState<any>(null);
+    const [viewingNewsViewers, setViewingNewsViewers] = useState<number | null>(null);
+    const [viewingAnnouncementViewers, setViewingAnnouncementViewers] = useState<number | null>(null);
 
   // Queries
   const { data: users = [] } = useQuery<User[]>({
@@ -85,6 +106,16 @@ export default function Admin() {
     enabled: !!user && user.role === "admin",
   });
 
+  const { data: newsViewers = [] } = useQuery({
+    queryKey: [`/api/news/${viewingNewsViewers}/viewers`],
+    enabled: !!user && user.role === "admin" && viewingNewsViewers !== null,
+  });
+
+  const { data: announcementViewers = [] } = useQuery({
+    queryKey: [`/api/announcements/${viewingAnnouncementViewers}/viewers`],
+    enabled: !!user && user.role === "admin" && viewingAnnouncementViewers !== null,
+  });
+
   // Forms
   const newsForm = useForm<NewsForm>({
     resolver: zodResolver(newsSchema),
@@ -98,7 +129,14 @@ export default function Admin() {
 
   const activityForm = useForm<PlannedActivityForm>({
     resolver: zodResolver(plannedActivitySchema),
-    defaultValues: { title: "", description: "", arista: "", album: "" },
+    defaultValues: { 
+      title: "", 
+      description: "", 
+      arista: "", 
+      album: "",
+      deadline: "",
+      facebookLink: ""
+    },
   });
 
   const userForm = useForm<UserUpdateForm>({
@@ -142,6 +180,23 @@ export default function Admin() {
     },
   });
 
+    const updateNewsMutation = useMutation({
+        mutationFn: async (data: NewsForm & { id: number }) => {
+            const { id, ...updateData } = data;
+            const response = await apiRequest("PUT", `/api/news/${id}`, updateData);
+            return response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+            toast({ title: "Noticia actualizada", description: "La noticia ha sido actualizada exitosamente" });
+            newsForm.reset();
+            setEditingNews(null);
+        },
+        onError: (error: any) => {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        },
+    });
+
   const createAnnouncementMutation = useMutation({
     mutationFn: async (data: AnnouncementForm) => {
       const response = await apiRequest("POST", "/api/announcements", {
@@ -160,6 +215,23 @@ export default function Admin() {
     },
   });
 
+    const updateAnnouncementMutation = useMutation({
+        mutationFn: async (data: AnnouncementForm & { id: number }) => {
+            const { id, ...updateData } = data;
+            const response = await apiRequest("PUT", `/api/announcements/${id}`, updateData);
+            return response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
+            toast({ title: "Aviso actualizado", description: "El aviso ha sido actualizado exitosamente" });
+            announcementForm.reset();
+            setEditingAnnouncement(null);
+        },
+        onError: (error: any) => {
+            toast({ title: "Error", description: error.message, variant: "destructive" });
+        },
+    });
+
   const createActivityMutation = useMutation({
     mutationFn: async (data: PlannedActivityForm) => {
       const response = await apiRequest("POST", "/api/planned-activities", {
@@ -172,6 +244,23 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/planned-activities"] });
       toast({ title: "Actividad creada", description: "La actividad ha sido agregada exitosamente" });
       activityForm.reset();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateActivityMutation = useMutation({
+    mutationFn: async (data: PlannedActivityForm & { id: number }) => {
+      const { id, ...updateData } = data;
+      const response = await apiRequest("PUT", `/api/planned-activities/${id}`, updateData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/planned-activities"] });
+      toast({ title: "Actividad actualizada", description: "La actividad ha sido actualizada exitosamente" });
+      activityForm.reset();
+      setEditingActivity(null);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -258,6 +347,21 @@ export default function Admin() {
     },
   });
 
+    const startEditingNews = (newsItem: any) => {
+        setEditingNews(newsItem);
+        newsForm.reset(newsItem);
+    };
+
+    const startEditingAnnouncement = (announcement: any) => {
+        setEditingAnnouncement(announcement);
+        announcementForm.reset(announcement);
+    };
+
+    const startEditingActivity = (activity: any) => {
+        setEditingActivity(activity);
+        activityForm.reset(activity);
+    };
+
   // Check admin permissions
   if (!user || user.role !== "admin") {
     return (
@@ -274,6 +378,7 @@ export default function Admin() {
   }
 
   const selectedArista = activityForm.watch("arista");
+  const selectedAlbum = activityForm.watch("album");
   const availableAlbums = selectedArista ? ARISTAS[selectedArista as keyof typeof ARISTAS]?.albums || [] : [];
 
   const onSelectUser = (selectedUser: User) => {
@@ -285,6 +390,78 @@ export default function Admin() {
       medal: selectedUser.medal || "none",
       totalTraces: selectedUser.totalTraces,
     });
+  };
+
+  const UserCountDisplay = () => {
+    const { data: userCountData, isLoading: isLoadingCount } = useQuery({
+      queryKey: ["/api/admin/user-count"],
+      refetchInterval: 10000, // Update every 10 seconds
+    });
+
+    const removeInactiveUsers = async () => {
+      try {
+        const response = await apiRequest("POST", "/api/admin/remove-inactive-users", {
+          adminId: user?.id,
+          minimumTraces: 1000,
+        });
+
+        if (!response.ok) {
+          throw new Error("Error al eliminar usuarios inactivos");
+        }
+
+        const result = await response.json();
+
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/user-count"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+
+        toast({
+          title: "Usuarios eliminados",
+          description: result.message,
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    };
+
+    if (isLoadingCount) {
+      return <div className="text-light-gray">Cargando estadísticas...</div>;
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="text-center p-4 bg-dark-graphite/50 rounded-lg">
+          <div className="text-2xl font-bold text-soft-lavender">{userCountData?.totalUsers || 0}</div>
+          <div className="text-sm text-light-gray">Usuarios registrados</div>
+        </div>
+        <div className="text-center p-4 bg-dark-graphite/50 rounded-lg">
+          <div className="text-2xl font-bold text-green-400">{userCountData?.availableSlots || 0}</div>
+          <div className="text-sm text-light-gray">Cupos disponibles</div>
+        </div>
+        <div className="text-center p-4 bg-dark-graphite/50 rounded-lg">
+          <div className="text-2xl font-bold text-yellow-400">{userCountData?.maxUsers || 70}</div>
+          <div className="text-sm text-light-gray">Cupos máximos</div>
+        </div>
+        <div className="md:col-span-3 mt-4">
+          <div className="bg-red-900/20 p-4 rounded-lg border border-red-500/30">
+            <h4 className="text-red-300 font-medium mb-2">Gestión de Bimestre</h4>
+            <p className="text-sm text-light-gray mb-3">
+              Eliminar usuarios que no alcanzaron el mínimo de 1000 trazos en este bimestre (11 de Junio - 10 de Agosto).
+            </p>
+            <Button
+              onClick={removeInactiveUsers}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              size="sm"
+            >
+              Eliminar Usuarios Inactivos
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -315,18 +492,33 @@ export default function Admin() {
 
           {/* Content Management Tab */}
           <TabsContent value="content" className="mt-6">
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+              {/* User Statistics Card */}
+              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="w-5 h-5 text-soft-lavender" />
+                    <span>Estadísticas del Sistema</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <UserCountDisplay />
+                </CardContent>
+              </Card>
+
               {/* Create News */}
-              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
+              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 h-fit max-h-[500px] w-full">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <FileText className="w-5 h-5 text-soft-lavender" />
-                    <span>Crear Noticia</span>
+                    <span>{editingNews ? "Editar Noticia" : "Crear Noticia"}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Form {...newsForm}>
-                    <form onSubmit={newsForm.handleSubmit((data) => createNewsMutation.mutate(data))} className="space-y-4">
+                      <form onSubmit={newsForm.handleSubmit((data) => {
+                          editingNews ? updateNewsMutation.mutate({ ...data, id: editingNews.id }) : createNewsMutation.mutate(data)
+                      })} className="space-y-4">
                       <FormField
                         control={newsForm.control}
                         name="title"
@@ -366,27 +558,48 @@ export default function Admin() {
 
                       <Button
                         type="submit"
-                        disabled={createNewsMutation.isPending}
+                        disabled={createNewsMutation.isPending || updateNewsMutation.isPending}
                         className="w-full glow-button"
                       >
-                        {createNewsMutation.isPending ? "Publicando..." : "Publicar Noticia"}
+                        {createNewsMutation.isPending
+                            ? "Publicando..."
+                            : updateNewsMutation.isPending
+                                ? "Guardando..."
+                                : editingNews
+                                    ? "Guardar Noticia"
+                                    : "Publicar Noticia"}
                       </Button>
+                         {editingNews && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="border-medium-gray/30 text-light-gray hover:bg-medium-gray/20"
+                                onClick={() => {
+                                    setEditingNews(null);
+                                    newsForm.reset();
+                                }}
+                            >
+                                Cancelar
+                            </Button>
+                        )}
                     </form>
                   </Form>
                 </CardContent>
               </Card>
 
               {/* Create Announcement */}
-              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
+              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 h-fit max-h-[500px] w-full">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <MessageSquare className="w-5 h-5 text-orange-400" />
-                    <span>Crear Aviso</span>
+                    <span>{editingAnnouncement ? "Editar Aviso" : "Crear Aviso"}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Form {...announcementForm}>
-                    <form onSubmit={announcementForm.handleSubmit((data) => createAnnouncementMutation.mutate(data))} className="space-y-4">
+                      <form onSubmit={announcementForm.handleSubmit((data) => {
+                          editingAnnouncement ? updateAnnouncementMutation.mutate({ ...data, id: editingAnnouncement.id }) : createAnnouncementMutation.mutate(data)
+                      })} className="space-y-4">
                       <FormField
                         control={announcementForm.control}
                         name="title"
@@ -426,27 +639,48 @@ export default function Admin() {
 
                       <Button
                         type="submit"
-                        disabled={createAnnouncementMutation.isPending}
+                        disabled={createAnnouncementMutation.isPending || updateAnnouncementMutation.isPending}
                         className="w-full bg-orange-600 hover:bg-orange-700 text-white"
                       >
-                        {createAnnouncementMutation.isPending ? "Publicando..." : "Publicar Aviso"}
+                        {createAnnouncementMutation.isPending
+                            ? "Publicando..."
+                            : updateAnnouncementMutation.isPending
+                                ? "Guardando..."
+                                : editingAnnouncement
+                                    ? "Guardar Aviso"
+                                    : "Publicar Aviso"}
                       </Button>
+                         {editingAnnouncement && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="border-medium-gray/30 text-light-gray hover:bg-medium-gray/20"
+                                onClick={() => {
+                                    setEditingAnnouncement(null);
+                                    announcementForm.reset();
+                                }}
+                            >
+                                Cancelar
+                            </Button>
+                        )}
                     </form>
                   </Form>
                 </CardContent>
               </Card>
 
               {/* Create Planned Activity */}
-              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-2">
+              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 col-span-1 lg:col-span-2 h-fit max-h-[600px] w-full">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Calendar className="w-5 h-5 text-green-400" />
-                    <span>Crear Actividad</span>
+                    <span>{editingActivity ? "Editar Actividad" : "Crear Actividad"}</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="max-h-[500px] overflow-y-auto">
                   <Form {...activityForm}>
-                    <form onSubmit={activityForm.handleSubmit((data) => createActivityMutation.mutate(data))} className="space-y-4">
+                    <form onSubmit={activityForm.handleSubmit((data) => {
+                      editingActivity ? updateActivityMutation.mutate({ ...data, id: editingActivity.id }) : createActivityMutation.mutate(data)
+                    })} className="space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
                         <FormField
                           control={activityForm.control}
@@ -521,21 +755,25 @@ export default function Admin() {
                       />
 
                       {/* Deadline field for express activities */}
-                      {activityForm.watch("arista") === "express" && (
+                      {selectedArista === "actividades-express" && selectedAlbum === "actividad-express" && (
                         <FormField
                           control={activityForm.control}
                           name="deadline"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-light-gray">Fecha límite</FormLabel>
+                              <FormLabel className="text-light-gray">Fecha límite *</FormLabel>
                               <FormControl>
                                 <Input
                                   {...field}
                                   type="datetime-local"
+                                  min={new Date().toISOString().slice(0, 16)}
                                   className="bg-dark-graphite border-medium-gray/30 text-white focus:border-soft-lavender"
                                 />
                               </FormControl>
                               <FormMessage />
+                              <div className="text-xs text-medium-gray mt-1">
+                                <p>Después de esta fecha, la actividad se moverá automáticamente a "Actividad Tardía"</p>
+                              </div>
                             </FormItem>
                           )}
                         />
@@ -581,18 +819,37 @@ export default function Admin() {
 
                       <Button
                         type="submit"
-                        disabled={createActivityMutation.isPending}
+                        disabled={createActivityMutation.isPending || updateActivityMutation.isPending}
                         className="w-full bg-green-600 hover:bg-green-700 text-white"
                       >
-                        {createActivityMutation.isPending ? "Creando..." : "Crear Actividad"}
+                        {createActivityMutation.isPending
+                          ? "Creando..."
+                          : updateActivityMutation.isPending
+                            ? "Guardando..."
+                            : editingActivity
+                              ? "Guardar Actividad"
+                              : "Crear Actividad"}
                       </Button>
+                      {editingActivity && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full border-medium-gray/30 text-light-gray hover:bg-medium-gray/20"
+                          onClick={() => {
+                            setEditingActivity(null);
+                            activityForm.reset();
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      )}
                     </form>
                   </Form>
                 </CardContent>
               </Card>
 
               {/* Existing News Management */}
-              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
+              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 h-fit min-h-[400px] max-h-[500px] w-full">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <FileText className="w-5 h-5 text-soft-lavender" />
@@ -600,7 +857,7 @@ export default function Admin() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
                     {newsList.map((newsItem: any) => (
                       <div
                         key={newsItem.id}
@@ -618,6 +875,15 @@ export default function Admin() {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => setViewingNewsViewers(newsItem.id)}
+                              className="border-medium-gray/30 text-green-400 hover:bg-green-500/20"
+                            >
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEditingNews(newsItem)}
                               className="border-medium-gray/30 text-blue-400 hover:bg-blue-500/20"
                             >
                               <Edit2 className="w-3 h-3" />
@@ -642,7 +908,7 @@ export default function Admin() {
               </Card>
 
               {/* Existing Announcements Management */}
-              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
+              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 h-fit min-h-[400px] max-h-[500px] w-full">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <MessageSquare className="w-5 h-5 text-orange-400" />
@@ -650,7 +916,7 @@ export default function Admin() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
                     {announcementsList.map((announcement: any) => (
                       <div
                         key={announcement.id}
@@ -668,6 +934,15 @@ export default function Admin() {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => setViewingAnnouncementViewers(announcement.id)}
+                              className="border-medium-gray/30 text-green-400 hover:bg-green-500/20"
+                            >
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEditingAnnouncement(announcement)}
                               className="border-medium-gray/30 text-blue-400 hover:bg-blue-500/20"
                             >
                               <Edit2 className="w-3 h-3" />
@@ -692,7 +967,7 @@ export default function Admin() {
               </Card>
 
               {/* Planned Activities Management */}
-              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-2">
+              <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 col-span-1 lg:col-span-2 max-h-[500px] w-full">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Calendar className="w-5 h-5 text-green-400" />
@@ -700,7 +975,7 @@ export default function Admin() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
                     {plannedActivitiesList.map((activity: any) => (
                       <div
                         key={activity.id}
@@ -726,6 +1001,7 @@ export default function Admin() {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => startEditingActivity(activity)}
                               className="border-medium-gray/30 text-blue-400 hover:bg-blue-500/20"
                             >
                               <Edit2 className="w-3 h-3" />
@@ -753,7 +1029,7 @@ export default function Admin() {
 
           {/* User Management Tab */}
           <TabsContent value="users" className="mt-6">
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
               {/* Users List */}
               <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
                 <CardHeader>
@@ -1233,6 +1509,58 @@ export default function Admin() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* News Viewers Modal */}
+        <Dialog open={viewingNewsViewers !== null} onOpenChange={() => setViewingNewsViewers(null)}>
+          <DialogContent className="bg-black/95 border-medium-gray/20 text-white max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-soft-lavender">Usuarios que vieron esta noticia</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-96 overflow-y-auto space-y-3">
+              {newsViewers.length > 0 ? (
+                newsViewers.map((viewer: any, index: number) => (
+                  <div key={index} className="flex justify-between items-center p-3 rounded-lg border border-medium-gray/20">
+                    <div>
+                      <div className="font-medium text-white">{viewer.user.fullName}</div>
+                      <div className="text-sm text-light-gray">{viewer.user.signature}</div>
+                    </div>
+                    <div className="text-sm text-medium-gray">
+                      {viewer.viewedAt}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-medium-gray py-8">Aún no hay usuarios que hayan visto esta noticia</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Announcement Viewers Modal */}
+        <Dialog open={viewingAnnouncementViewers !== null} onOpenChange={() => setViewingAnnouncementViewers(null)}>
+          <DialogContent className="bg-black/95 border-medium-gray/20 text-white max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-orange-400">Usuarios que vieron este aviso</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-96 overflow-y-auto space-y-3">
+              {announcementViewers.length > 0 ? (
+                announcementViewers.map((viewer: any, index: number) => (
+                  <div key={index} className="flex justify-between items-center p-3 rounded-lg border border-medium-gray/20">
+                    <div>
+                      <div className="font-medium text-white">{viewer.user.fullName}</div>
+                      <div className="text-sm text-light-gray">{viewer.user.signature}</div>
+                    </div>
+                    <div className="text-sm text-medium-gray">
+                      {viewer.viewedAt}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-medium-gray py-8">Aún no hay usuarios que hayan visto este aviso</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

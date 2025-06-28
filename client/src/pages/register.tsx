@@ -52,7 +52,23 @@ export default function Register() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Error en el registro");
+        
+        // Show special styling for quota full message
+        if (errorData.message?.includes("Cupos Cubiertos")) {
+          toast({
+            title: "🚫 Cupos Cubiertos",
+            description: errorData.message,
+            variant: "destructive",
+            duration: 8000, // Show longer for important message
+          });
+        } else {
+          toast({
+            title: "Error en el registro",
+            description: errorData.message || "Ha ocurrido un error inesperado",
+            variant: "destructive",
+          });
+        }
+        return;
       }
 
       const { user } = await response.json();

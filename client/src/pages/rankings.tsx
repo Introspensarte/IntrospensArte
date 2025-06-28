@@ -13,13 +13,13 @@ import type { User } from "@shared/schema";
 const getRankColor = (rank: string) => {
     switch (rank) {
       case "Alma en tránsito":
-        return "bg-gray-500/20 text-gray-400";
+        return "bg-yellow-500/20 text-yellow-400";
       case "Voz en boceto":
-        return "bg-blue-500/20 text-blue-400";
+        return "bg-red-500/20 text-red-400";
       case "Narrador de atmósferas":
         return "bg-green-500/20 text-green-400";
       case "Escritor de introspecciones":
-        return "bg-yellow-500/20 text-yellow-400";
+        return "bg-blue-500/20 text-blue-400";
       case "Arquitecto del alma":
         return "bg-purple-500/20 text-purple-400";
       default:

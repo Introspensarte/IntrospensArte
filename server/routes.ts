@@ -15,8 +15,83 @@ import {
   bonusHistory
 } from "@shared/schema";
 import { db } from "./db";
-import { calculateTraces, calculateExpressActivityTraces } from "../client/src/lib/trace-calculator.js";
+// Server-side trace calculation function
+function calculateTraces(type: string, wordCount: number, responses?: number, album?: string): number {
+  console.log(`Calculating traces for type: ${type}, wordCount: ${wordCount}, responses: ${responses}, album: ${album}`);
+
+  // Special case for "Actividad Tardía" - always 100 traces regardless of type or word count
+  if (album === "actividad-tardia") {
+    console.log("Actividad Tardía detected - assigning 100 traces");
+    return 100;
+  }
+
+  let traces = 0;
+
+  switch (type.toLowerCase()) {
+    case 'microcuento':
+      // 1 a 100 palabras: 100 trazos
+      if (wordCount >= 1 && wordCount <= 100) {
+        traces = 100;
+      } else {
+        // Si excede 100 palabras, se considera como drabble o narrativa
+        traces = calculateTraces(wordCount <= 200 ? 'drabble' : 'narrativa', wordCount);
+      }
+      break;
+
+    case 'drabble':
+      // 101 a 200 palabras: 200 trazos
+      if (wordCount >= 101 && wordCount <= 200) {
+        traces = 200;
+      } else if (wordCount <= 100) {
+        traces = calculateTraces('microcuento', wordCount);
+      } else {
+        traces = calculateTraces('narrativa', wordCount);
+      }
+      break;
+
+    case 'narrativa':
+      // 10 trazos por cada 100 palabras
+      traces = Math.floor(wordCount / 100) * 10;
+      break;
+
+    case 'hilo':
+      // 5 trazos por cada 280 palabras + bonus por respuestas
+      traces = Math.floor(wordCount / 280) * 5;
+      if (responses && responses > 0) {
+        traces += responses * 2; // 2 trazos adicionales por respuesta
+      }
+      break;
+
+    case 'rol':
+      // 3 trazos por cada 50 palabras + bonus por respuestas
+      traces = Math.floor(wordCount / 50) * 3;
+      if (responses && responses > 0) {
+        traces += responses * 2; // 2 trazos adicionales por respuesta
+      }
+      break;
+
+    case 'otro':
+      // 5 trazos por cada 100 palabras
+      traces = Math.floor(wordCount / 100) * 5;
+      break;
+
+    default:
+      // Default: 1 trazo por cada 20 palabras
+      traces = Math.floor(wordCount / 20);
+      break;
+  }
+
+  // Minimum 1 trace if there are words
+  if (wordCount > 0 && traces === 0) {
+    traces = 1;
+  }
+
+  console.log(`Calculated ${traces} traces for ${type} with ${wordCount} words`);
+  return traces;
+}
 import { PushNotificationService } from "./push-notifications";
+import { desc, eq, asc, and, isNull, isNotNull, gte, ne, exists, inArray, count, sql, lt } from "drizzle-orm";
+import { users } from "@shared/schema";
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), 'uploads');
@@ -41,13 +116,13 @@ async function extractImageFromUrl(url: string): Promise<string | null> {
     });
 
     const $ = cheerio.load(response.data);
-    
+
     // Priority order for finding images
     let imageUrl = null;
 
     // 1. Try og:image meta tag
     imageUrl = $('meta[property="og:image"]').attr('content');
-    
+
     // 2. Try twitter:image meta tag
     if (!imageUrl) {
       imageUrl = $('meta[name="twitter:image"]').attr('content');
@@ -174,9 +249,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User routes
+  // Get all users for members page
+  app.get("/api/users", async (req, res) => {
+    try {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          signature: users.signature,
+          birthday: users.birthday,
+          rank: users.rank,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .orderBy(users.createdAt);
+
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Error del servidor" });
+    }
+  });
+
+  // Get single user profile
+  app.get("/api/users/:id", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "ID de usuario inválido" });
+      }
+
+      const user = await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          age: users.age,
+          birthday: users.birthday,
+          faceClaim: users.faceClaim,
+          signature: users.signature,
+          motivation: users.motivation,
+          facebookLink: users.facebookLink,
+          rank: users.rank,
+          totalTraces: users.totalTraces,
+          role: users.role,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (user.length === 0) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      res.json(user[0]);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Error del servidor" });
+    }
+  });
+
   app.post("/api/register", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
+
+      // Check user limit (70 users maximum)
+      const totalUsers = await db.select({ count: count() }).from(users);
+      const userCount = totalUsers[0]?.count || 0;
+      
+      if (userCount >= 70) {
+        return res.status(400).json({ 
+          message: "Cupos Cubiertos. Lo lamentamos mucho, este bimestre ya se han llenado todos los cupos disponibles. No te preocupes, puedes estar atento a nuestra página de Facebook para cuando volvamos a abrir cupos o anunciemos cuándo es el próximo bimestre. ¡Esperamos tenerte con nosotros pronto!" 
+        });
+      }
 
       // Check if signature already exists
       const existingUser = await storage.getUserBySignature(userData.signature);
@@ -221,27 +366,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const user = await storage.getUser(id);
-      if (!user) {
-        return res.status(404).json({ message: "Usuario no encontrado" });
-      }
-      res.json({ ...user, password: undefined });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
   app.put("/api/users/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const updates = req.body;
-      
+
       // Log the update for debugging
       console.log(`Updating user ${id} with:`, updates);
-      
+
       const user = await storage.updateUser(id, updates);
 
       // Enviar notificación a administradores si no es una actualización administrativa
@@ -263,7 +395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`User ${id} updated successfully:`, { ...user, password: undefined });
-      
+
       res.json({ ...user, password: undefined });
     } catch (error: any) {
       console.error(`Error updating user ${id}:`, error);
@@ -297,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process image from link if provided
       let finalImageUrl = activityData.image_url?.trim() || defaultImageUrl;
-      
+
       if (activityData.link?.trim()) {
         console.log('Extracting image from link:', activityData.link);
         const extractedImageUrl = await extractImageFromUrl(activityData.link.trim());
@@ -330,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Validated data:", validatedData);
 
       // Calculate traces based on activity type and word count
-      const traces = calculateTraces(validatedData.type, validatedData.word_count, validatedData.responses);
+      const traces = calculateTraces(validatedData.type, validatedData.word_count, validatedData.responses, validatedData.album);
 
       console.log("Calculated traces:", traces);
 
@@ -438,7 +570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const { title, content } = req.body;
-      
+
       if (!title || !content) {
         return res.status(400).json({ message: "Título y contenido requeridos" });
       }
@@ -493,8 +625,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const announcements = await storage.getAllAnnouncements();
       res.json(announcements);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // Get viewers for a specific news item
+  app.get("/api/news/:id/viewers", async (req, res) => {
+    try {
+      const newsId = parseInt(req.params.id);
+      const viewers = await storage.getNewsViewers(newsId);
+      res.json(viewers);
+    } catch (error) {
+      console.error("Error fetching news viewers:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // Get viewers for a specific announcement
+  app.get("/api/announcements/:id/viewers", async (req, res) => {
+    try {
+      const announcementId = parseInt(req.params.id);
+      const viewers = await storage.getAnnouncementViewers(announcementId);
+      res.json(viewers);
+    } catch (error) {
+      console.error("Error fetching announcement viewers:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
     }
   });
 
@@ -502,7 +659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const { title, content } = req.body;
-      
+
       if (!title || !content) {
         return res.status(400).json({ message: "Título y contenido requeridos" });
       }
@@ -546,21 +703,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/planned-activities", async (req, res) => {
+  try {
+    // First, move expired activities to "actividad-tardia"
+    const now = new Date();
+    await storage.moveExpiredActivitiesToTardia();
+
+    const activities = await storage.getAllPlannedActivities();
+    res.json(activities);
+  } catch (error: any) {
+    console.error("Error fetching planned activities:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+  // Update planned activity
+  app.put("/api/planned-activities/:id", async (req, res) => {
     try {
-      const activities = await storage.getAllPlannedActivities();
-      res.json(activities);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      const activityId = parseInt(req.params.id);
+      const updatedActivity = await storage.updatePlannedActivity(activityId, req.body);
+      res.json(updatedActivity);
+    } catch (error) {
+      console.error("Error updating planned activity:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
     }
   });
 
+  // Delete planned activity
   app.delete("/api/planned-activities/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      await storage.deletePlannedActivity(id);
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      const activityId = parseInt(req.params.id);
+      await storage.deletePlannedActivity(activityId);
+      res.json({ message: "Actividad eliminada exitosamente" });
+    } catch (error) {
+      console.error("Error deleting planned activity:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  });
+
+  // Check and move expired express activities
+  app.post("/api/admin/check-expired-activities", async (req, res) => {
+    try {
+      await storage.moveExpiredActivitiesToTardia();
+      res.json({ success: true, message: "Actividades expiradas actualizadas" });
+    } catch (error) {
+      console.error("Error checking expired activities:", error);
+      res.status(500).json({ message: "Error interno del servidor" });
     }
   });
 
@@ -680,14 +867,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate new traces
-      const traces = calculateTraces(type, parseInt(wordCount) || 0, responses ? parseInt(responses) : undefined);
+      const traces = calculateTraces(type, parseInt(wordCount) || 0, responses ? parseInt(responses) : undefined, album);
 
       // Default image URL for activities
       const defaultImageUrl = "https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA";
 
       // Process image from link if provided but no imageUrl
       let finalImageUrl = imageUrl?.trim() || activity.image_url || defaultImageUrl;
-      
+
       if (link?.trim() && (!imageUrl || imageUrl.trim() === "")) {
         console.log('Extracting image from link for update:', link);
         const extractedImageUrl = await extractImageFromUrl(link.trim());
@@ -718,7 +905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedActivity = await storage.updateActivity(activityId, cleanData);
 
       // Update user stats after updating activity
-      await storage.updateUserStats(parseInt(userId));
+      await storage.updateUser(parseInt(userId));
 
       // Get updated user stats
       const updatedUser = await storage.getUser(parseInt(userId));
@@ -748,14 +935,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users/:id/refresh-stats", async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
-      
+
       console.log(`Manual stats refresh requested for user ${userId}`);
-      
+
       await storage.updateUserStats(userId);
       const user = await storage.getUser(userId);
-      
+
       console.log(`Stats refreshed for user ${userId}: ${user?.totalActivities} activities, ${user?.totalWords} words, ${user?.totalTraces} traces`);
-      
+
       res.json({ 
         success: true, 
         user: { ...user, password: undefined },
@@ -783,7 +970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const newTotal = (user.totalTraces || 0) + parseInt(additionalTraces);
-      
+
       await storage.updateUser(userId, { totalTraces: newTotal });
 
       // Create bonus history entry
@@ -822,11 +1009,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       console.log(`Getting bonus history for user ${userId}`);
-      
+
       if (isNaN(userId)) {
         return res.status(400).json({ message: "ID de usuario inválido" });
       }
-      
+
       const bonusHistory = await storage.getUserBonusHistory(userId);
       console.log(`Found ${bonusHistory.length} bonus history entries for user ${userId}`);
       res.json(bonusHistory);
@@ -1027,7 +1214,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  
+  // Admin endpoint to remove users below minimum traces threshold
+  app.post("/api/admin/remove-inactive-users", async (req, res) => {
+    try {
+      const { adminId, minimumTraces = 1000 } = req.body;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions
+      const admin = await storage.getUser(parseInt(adminId));
+      if (!admin || admin.role !== "admin") {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      // Get users below minimum traces threshold (excluding admins)
+      const inactiveUsers = await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          signature: users.signature,
+          totalTraces: users.totalTraces,
+        })
+        .from(users)
+        .where(and(
+          lt(users.totalTraces, minimumTraces),
+          ne(users.role, "admin")
+        ));
+
+      if (inactiveUsers.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: "No hay usuarios por debajo del mínimo de trazos",
+          removedCount: 0,
+          users: []
+        });
+      }
+
+      // Remove inactive users
+      const userIds = inactiveUsers.map(user => user.id);
+      await db.delete(users).where(inArray(users.id, userIds));
+
+      res.json({ 
+        success: true, 
+        message: `Se eliminaron ${inactiveUsers.length} usuarios por no alcanzar el mínimo de ${minimumTraces} trazos`,
+        removedCount: inactiveUsers.length,
+        users: inactiveUsers
+      });
+    } catch (error: any) {
+      console.error("Error removing inactive users:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get current user count (for admin dashboard)
+  app.get("/api/admin/user-count", async (req, res) => {
+    try {
+      const totalUsers = await db.select({ count: count() }).from(users);
+      const userCount = totalUsers[0]?.count || 0;
+      
+      res.json({ 
+        totalUsers: userCount,
+        availableSlots: Math.max(0, 70 - userCount),
+        maxUsers: 70
+      });
+    } catch (error: any) {
+      console.error("Error getting user count:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

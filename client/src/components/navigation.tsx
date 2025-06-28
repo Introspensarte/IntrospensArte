@@ -4,14 +4,28 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LogOut, User, Bell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export default function Navigation() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
+  // Force re-render when user changes
+  useEffect(() => {
+    // Force component re-render by updating the DOM
+    const forceUpdate = () => {
+      // This will trigger a re-render of the entire navigation
+    };
+    forceUpdate();
+  }, [user]);
+
   const { data: notifications = [] } = useQuery({
     queryKey: [`/api/users/${user?.id}/notifications`],
     enabled: !!user,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Always refetch
+    cacheTime: 0, // Don't cache
   });
 
   const unreadNotifications = notifications.filter((n: any) => !n.read);

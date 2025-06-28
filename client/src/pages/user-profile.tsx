@@ -12,13 +12,13 @@ function getRankColor(rank: string) {
     case "Alma en tránsito":
       return "bg-yellow-500/20 text-yellow-400";
     case "Voz en boceto":
-      return "bg-green-500/20 text-green-400";
+      return "bg-red-500/20 text-red-400";
     case "Narrador de atmósferas":
-      return "bg-orange-800/20 text-orange-300";
+      return "bg-green-500/20 text-green-400";
     case "Escritor de introspecciones":
       return "bg-blue-500/20 text-blue-400";
     case "Arquitecto del alma":
-      return "bg-soft-lavender/20 text-soft-lavender";
+      return "bg-purple-500/20 text-purple-400";
     default:
       return "bg-gray-500/20 text-gray-400";
   }

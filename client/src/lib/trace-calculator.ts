@@ -1,8 +1,14 @@
 
 // Trace calculation based on activity type and content
 
-export function calculateTraces(type: string, wordCount: number, responses?: number): number {
-  console.log(`Calculating traces for type: ${type}, wordCount: ${wordCount}, responses: ${responses}`);
+export function calculateTraces(type: string, wordCount: number, responses?: number, album?: string): number {
+  console.log(`Calculating traces for type: ${type}, wordCount: ${wordCount}, responses: ${responses}, album: ${album}`);
+  
+  // Special case for "Actividad Tardía" - always 100 traces regardless of type or word count
+  if (album === "actividad-tardia") {
+    console.log("Actividad Tardía detected - assigning 100 traces");
+    return 100;
+  }
   
   let traces = 0;
 

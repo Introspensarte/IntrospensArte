@@ -43,11 +43,11 @@ export const ARISTAS = {
   "actividades-express": {
     name: "VI. Actividades Express",
     albums: [
-      { id: "prom-1", name: "Prom 1" },
-      { id: "prom-2", name: "Prom 2" },
-      { id: "prom-3", name: "Prom 3" },
-      { id: "prom-4", name: "Prom 4" },
-      { id: "prom-5", name: "Prom 5" },
+      { id: "actividad-inicial", name: "Actividad Inicial" },
+      { id: "actividad-express", name: "Actividad Express" },
+      { id: "actividad-tematica", name: "Actividad Temática" },
+      { id: "actividad-15-dias", name: "Actividad 15 Días" },
+      { id: "actividad-tardia", name: "Actividad Tardía" },
     ],
   },
 };

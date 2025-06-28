@@ -45,22 +45,27 @@ export default function Landing() {
         <div className="decorative-line mb-12"></div>
         
         {/* CTA Buttons */}
-        <div className="space-y-4 mb-12">
+        <div className="space-y-6 mb-12">
           {/* Primary CTA - Purple glowing button */}
-          <Link href="/register">
+          <Link href="/rules">
             <button className="glow-button w-full md:w-auto px-12 py-4 rounded-lg text-white font-semibold text-lg tracking-wide transition-all duration-300 hover:scale-105">
-              Ingresa al proyecto
+              Únete al proyecto
+            </button>
+          </Link>
+          
+          {/* Quiénes somos button */}
+          <Link href="/about">
+            <button className="w-full md:w-auto px-8 py-3 rounded-lg bg-medium-gray/20 text-light-gray border border-medium-gray/30 hover:bg-medium-gray/30 hover:text-white transition-all duration-300">
+              ¿Quiénes somos?
             </button>
           </Link>
           
           {/* Secondary CTA - Gray button */}
-          <div className="pt-2">
-            <Link href="/login">
-              <button className="w-full md:w-auto px-8 py-3 rounded-lg bg-medium-gray/20 text-light-gray border border-medium-gray/30 hover:bg-medium-gray/30 hover:text-white transition-all duration-300">
-                Iniciar sesión
-              </button>
-            </Link>
-          </div>
+          <Link href="/login">
+            <button className="w-full md:w-auto px-8 py-3 rounded-lg bg-medium-gray/20 text-light-gray border border-medium-gray/30 hover:bg-medium-gray/30 hover:text-white transition-all duration-300">
+              Iniciar sesión
+            </button>
+          </Link>
         </div>
         
         {/* Decorative bottom line */}

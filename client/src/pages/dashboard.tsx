@@ -533,10 +533,10 @@ export default function Dashboard() {
                       target.src = 'https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA';
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-soft-lavender">{activity.user?.signature}</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-soft-lavender font-medium">{activity.user?.signature}</span>
                       <div className="flex gap-2">
                         <span className="flex items-center gap-1">
                           <Heart className="w-3 h-3" />
@@ -551,9 +551,10 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <CardContent className="p-3">
-                  <h3 className="font-semibold text-white text-sm line-clamp-2 leading-tight">
+                  <h3 className="font-semibold text-white text-sm line-clamp-2 leading-tight mb-1">
                     {activity.name}
                   </h3>
+                  <p className="text-xs text-light-gray">Por {activity.user?.fullName}</p>
                 </CardContent>
               </Card>
             ))}
