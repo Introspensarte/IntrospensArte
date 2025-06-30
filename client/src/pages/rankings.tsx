@@ -68,28 +68,28 @@ export default function Rankings() {
             onOpenChange={(open) => setExpandedUser(open ? rankUser.id : null)}
           >
             <CollapsibleTrigger asChild>
-              <CardContent className="p-4 cursor-pointer hover:bg-medium-gray/10 transition-colors">
+              <CardContent className="p-3 sm:p-4 cursor-pointer hover:bg-medium-gray/10 transition-colors">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-medium-gray/20">
-                      {index === 0 && <Trophy className="w-5 h-5 text-yellow-500" />}
-                      {index === 1 && <Medal className="w-5 h-5 text-gray-400" />}
-                      {index === 2 && <Star className="w-5 h-5 text-amber-600" />}
-                      {index > 2 && <span className="text-light-gray font-semibold">#{index + 1}</span>}
+                  <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
+                    <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-medium-gray/20 flex-shrink-0">
+                      {index === 0 && <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />}
+                      {index === 1 && <Medal className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />}
+                      {index === 2 && <Star className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />}
+                      {index > 2 && <span className="text-light-gray font-semibold text-sm sm:text-base">#{index + 1}</span>}
                     </div>
 
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="space-y-1">
-                        <h3 className="font-semibold text-white text-lg">{rankUser.fullName}</h3>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs bg-soft-lavender/20 text-soft-lavender">
+                        <h3 className="font-semibold text-white text-sm sm:text-lg truncate">{rankUser.fullName}</h3>
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                          <Badge variant="secondary" className="text-xs bg-soft-lavender/20 text-soft-lavender px-1 py-0">
                             {rankUser.signature}
                           </Badge>
-                          <Badge variant="secondary" className={`text-xs ${getRankColor(rankUser.rank)}`}>
+                          <Badge variant="secondary" className={`text-xs px-1 py-0 ${getRankColor(rankUser.rank)}`}>
                             {rankUser.rank}
                           </Badge>
                           {rankUser.role === "admin" && (
-                            <Badge variant="destructive" className="text-xs bg-yellow-600/50 text-yellow-300">
+                            <Badge variant="destructive" className="text-xs bg-yellow-600/50 text-yellow-300 px-1 py-0">
                               Admin
                             </Badge>
                           )}
@@ -98,19 +98,19 @@ export default function Rankings() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-soft-lavender">
+                      <div className="text-lg sm:text-2xl font-bold text-soft-lavender">
                         {type === 'traces' ? rankUser.totalTraces : rankUser.totalWords}
                       </div>
-                      <div className="text-sm text-light-gray">
+                      <div className="text-xs sm:text-sm text-light-gray">
                         {type === 'traces' ? 'trazos' : 'palabras'}
                       </div>
                     </div>
                     {expandedUser === rankUser.id ? (
-                      <ChevronUp className="h-5 w-5 text-light-gray" />
+                      <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-light-gray" />
                     ) : (
-                      <ChevronDown className="h-5 w-5 text-light-gray" />
+                      <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-light-gray" />
                     )}
                   </div>
                 </div>
@@ -118,24 +118,24 @@ export default function Rankings() {
             </CollapsibleTrigger>
 
             <CollapsibleContent>
-              <div className="px-4 pb-4 border-t border-medium-gray/20">
-                <div className="pt-4 space-y-4">
-                  <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t border-medium-gray/20">
+                <div className="pt-3 sm:pt-4 space-y-3 sm:space-y-4">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
                     <div>
-                      <div className="text-lg font-bold text-soft-lavender">{rankUser.totalTraces}</div>
-                      <div className="text-sm text-light-gray">Trazos totales</div>
+                      <div className="text-sm sm:text-lg font-bold text-soft-lavender">{rankUser.totalTraces}</div>
+                      <div className="text-xs sm:text-sm text-light-gray">Trazos totales</div>
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-soft-lavender">{rankUser.totalWords}</div>
-                      <div className="text-sm text-light-gray">Palabras totales</div>
+                      <div className="text-sm sm:text-lg font-bold text-soft-lavender">{rankUser.totalWords}</div>
+                      <div className="text-xs sm:text-sm text-light-gray">Palabras totales</div>
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-soft-lavender">{rankUser.totalActivities}</div>
-                      <div className="text-sm text-light-gray">Actividades</div>
+                      <div className="text-sm sm:text-lg font-bold text-soft-lavender">{rankUser.totalActivities}</div>
+                      <div className="text-xs sm:text-sm text-light-gray">Actividades</div>
                     </div>
                   </div>
 
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-xs sm:text-sm">
                     <div className="flex justify-between">
                       <span className="text-light-gray">Miembro desde:</span>
                       <span className="text-white">
@@ -149,10 +149,10 @@ export default function Rankings() {
                       e.stopPropagation();
                       setLocation(`/usuario/${rankUser.id}`);
                     }}
-                    className="w-full bg-soft-lavender/20 hover:bg-soft-lavender/30 text-soft-lavender border border-soft-lavender/30"
+                    className="w-full bg-soft-lavender/20 hover:bg-soft-lavender/30 text-soft-lavender border border-soft-lavender/30 h-8 sm:h-10 text-xs sm:text-sm"
                     variant="outline"
                   >
-                    <Eye className="h-4 w-4 mr-2" />
+                    <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     Ver Perfil
                   </Button>
                 </div>
@@ -174,15 +174,15 @@ export default function Rankings() {
           <p className="text-light-gray text-lg">Clasificaciones de la comunidad</p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-4 lg:gap-8">
           {/* Rankings */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="traces" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-black/40 border border-medium-gray/20">
-                <TabsTrigger value="traces" className="data-[state=active]:bg-soft-lavender/20 data-[state=active]:text-soft-lavender">
+              <TabsList className="grid w-full grid-cols-2 bg-black/40 border border-medium-gray/20 h-auto">
+                <TabsTrigger value="traces" className="data-[state=active]:bg-soft-lavender/20 data-[state=active]:text-soft-lavender text-xs sm:text-sm py-2 px-2 sm:px-4">
                   Ranking de Trazos
                 </TabsTrigger>
-                <TabsTrigger value="words" className="data-[state=active]:bg-soft-lavender/20 data-[state=active]:text-soft-lavender">
+                <TabsTrigger value="words" className="data-[state=active]:bg-soft-lavender/20 data-[state=active]:text-soft-lavender text-xs sm:text-sm py-2 px-2 sm:px-4">
                   Ranking de Palabras
                 </TabsTrigger>
               </TabsList>
@@ -198,30 +198,30 @@ export default function Rankings() {
           </div>
 
           {/* Current User Position */}
-          <div className="space-y-6">
+          <div className="space-y-4 lg:space-y-6">
             {user && (
               <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
-                <CardHeader>
-                  <CardTitle className="font-playfair text-xl">Tu Posición</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="font-playfair text-lg sm:text-xl">Tu Posición</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-light-gray">Ranking de Trazos:</span>
-                      <Badge variant="outline" className="text-soft-lavender border-soft-lavender/30">
+                      <span className="text-light-gray text-xs sm:text-sm">Ranking de Trazos:</span>
+                      <Badge variant="outline" className="text-soft-lavender border-soft-lavender/30 text-xs sm:text-sm">
                         #{userTracesPosition || "N/A"}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-light-gray">Ranking de Palabras:</span>
-                      <Badge variant="outline" className="text-soft-lavender border-soft-lavender/30">
+                      <span className="text-light-gray text-xs sm:text-sm">Ranking de Palabras:</span>
+                      <Badge variant="outline" className="text-soft-lavender border-soft-lavender/30 text-xs sm:text-sm">
                         #{userWordsPosition || "N/A"}
                       </Badge>
                     </div>
                     <div className="pt-2 border-t border-medium-gray/20">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-soft-lavender">{user.totalTraces}</div>
-                        <div className="text-sm text-light-gray">Tus trazos totales</div>
+                        <div className="text-xl sm:text-2xl font-bold text-soft-lavender">{user.totalTraces}</div>
+                        <div className="text-xs sm:text-sm text-light-gray">Tus trazos totales</div>
                       </div>
                     </div>
                   </div>

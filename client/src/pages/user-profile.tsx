@@ -31,25 +31,28 @@ export default function UserProfile() {
   const { data: user, isLoading: userLoading } = useQuery<User>({
     queryKey: [`/api/users/${userId}`],
     enabled: !!userId,
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchInterval: 10000, // Refresh every 10 seconds
+    staleTime: 0, // Always consider data stale
   });
 
   const { data: activities = [], isLoading: activitiesLoading } = useQuery<Activity[]>({
     queryKey: [`/api/users/${userId}/activities`],
     enabled: !!userId,
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchInterval: 10000,
+    staleTime: 0,
   });
 
   const { data: bonusHistory = [] } = useQuery<any[]>({
     queryKey: [`/api/users/${userId}/bonus-history`],
     enabled: !!userId,
-    refetchInterval: 5000, // Auto-refresh every 5 seconds
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchInterval: 10000,
+    staleTime: 0,
   });
 
   if (userLoading) {
@@ -189,17 +192,17 @@ export default function UserProfile() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-soft-lavender">{user.totalTraces}</div>
+                  <div className="text-2xl font-bold text-soft-lavender">{user.totalTraces || 0}</div>
                   <div className="text-sm text-light-gray">Trazos totales</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-soft-lavender">{user.totalWords}</div>
+                  <div className="text-2xl font-bold text-soft-lavender">{user.totalWords || 0}</div>
                   <div className="text-sm text-light-gray">Palabras</div>
                 </div>
               </div>
 
               <div className="text-center mb-6">
-                <div className="text-2xl font-bold text-soft-lavender">{user.totalActivities}</div>
+                <div className="text-2xl font-bold text-soft-lavender">{user.totalActivities || 0}</div>
                 <div className="text-sm text-light-gray">Actividades realizadas</div>
               </div>
             </CardContent>

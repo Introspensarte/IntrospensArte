@@ -71,6 +71,7 @@ export const plannedActivities = pgTable("planned_activities", {
   deadline: timestamp("deadline"),
   facebookLink: text("facebook_link"),
   createdAt: timestamp("created_at").defaultNow(),
+  activityCode: text("activity_code"),
 });
 
 // Notifications table
@@ -78,7 +79,7 @@ export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   title: text("title").notNull(),
-  message: text("message").notNull(),
+  content: text("content").notNull(),
   type: text("type").default("general").notNull(),
   read: boolean("read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -96,6 +97,45 @@ export const bonusHistory = pgTable("bonus_history", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Support tickets table
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(), // 'reclamo', 'sugerencia', 'problema', 'contacto'
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  email: text("email"),
+  isAnonymous: boolean("is_anonymous").default(false).notNull(),
+  status: text("status").default("pending").notNull(), // 'pending', 'in_progress', 'resolved', 'closed'
+  adminResponse: text("admin_response"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Calendar events table
+export const calendarEvents = pgTable("calendar_events", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: text("type").notNull(), // 'news', 'announcement', 'activity'
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  publishedDate: timestamp("published_date"),
+  status: text("status").default("draft").notNull(), // 'draft', 'scheduled', 'published', 'archived'
+  visibility: boolean("visibility").default(true).notNull(),
+  authorId: integer("author_id").references(() => users.id).notNull(),
+
+  // Campos específicos para actividades
+  arista: text("arista"),
+  album: text("album"),
+  deadline: timestamp("deadline"),
+  facebookLink: text("facebook_link"),
+  description: text("description"),
+
+  // Metadatos
+  autoPublished: boolean("auto_published").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Define relations
 export const usersRelations = relations(users, ({ many }) => ({
   activities: many(activities),
@@ -104,6 +144,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   plannedActivities: many(plannedActivities),
   notifications: many(notifications),
   bonusHistory: many(bonusHistory),
+  calendarEvents: many(calendarEvents),
 }));
 
 export const activitiesRelations = relations(activities, ({ one }) => ({
@@ -148,6 +189,15 @@ export const bonusHistoryRelations = relations(bonusHistory, ({ one }) => ({
   }),
   assignedBy: one(users, {
     fields: [bonusHistory.assignedById],
+    references: [users.id],
+  }),
+}));
+
+export const supportTicketsRelations = relations(supportTickets, ({ }) => ({}));
+
+export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+  author: one(users, {
+    fields: [calendarEvents.authorId],
     references: [users.id],
   }),
 }));
@@ -207,16 +257,47 @@ export const insertPlannedActivitySchema = createInsertSchema(plannedActivities)
     return isNaN(date.getTime()) ? null : date;
   }),
   facebookLink: z.string().url().optional().or(z.literal("")).or(z.undefined()),
-});
-
-export const insertNotificationSchema = createInsertSchema(notifications).omit({
-  id: true,
-  createdAt: true,
+  activityCode: z.string().optional(),
 });
 
 export const insertBonusHistorySchema = createInsertSchema(bonusHistory).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  status: true,
+  adminResponse: true,
+  resolvedAt: true,
+  createdAt: true,
+});
+
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
+  id: true,
+  publishedDate: true,
+  autoPublished: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  scheduledDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      if (isNaN(date.getTime())) {
+        throw new Error("Fecha inválida");
+      }
+      return date;
+    }
+    return val;
+  }),
+  deadline: z.union([z.string(), z.date()]).optional().nullable().transform((val) => {
+    if (!val || val === '') return null;
+    if (typeof val === 'string') {
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return val;
+  }),
 });
 
 // Types
@@ -263,7 +344,14 @@ export type Announcement = typeof announcements.$inferSelect;
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type PlannedActivity = typeof plannedActivities.$inferSelect;
 export type InsertPlannedActivity = z.infer<typeof insertPlannedActivitySchema>;
+export type InsertNotification = typeof notifications.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
-export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// Notification schema for validation
+export const insertNotificationSchema = createInsertSchema(notifications);
 export type BonusHistory = typeof bonusHistory.$inferSelect;
 export type InsertBonusHistory = z.infer<typeof insertBonusHistorySchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;

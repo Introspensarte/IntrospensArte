@@ -12,7 +12,8 @@ import {
   insertNewsSchema, 
   insertAnnouncementSchema, 
   insertPlannedActivitySchema,
-  bonusHistory
+  bonusHistory,
+  supportTickets
 } from "@shared/schema";
 import { db } from "./db";
 // Server-side trace calculation function
@@ -50,8 +51,21 @@ function calculateTraces(type: string, wordCount: number, responses?: number, al
       break;
 
     case 'narrativa':
-      // 10 trazos por cada 100 palabras
-      traces = Math.floor(wordCount / 100) * 10;
+      // 201 o más palabras: base de 300 trazos (201 a 499 palabras)
+      // +100 trazos por cada 500 palabras adicionales
+      if (wordCount >= 201) {
+        if (wordCount <= 499) {
+          traces = 300; // Base para 201-499 palabras
+        } else {
+          // Calcular trazos adicionales por cada bloque de 500 palabras
+          const additionalBlocks = Math.floor((wordCount - 500) / 500) + 1;
+          traces = 300 + (additionalBlocks * 100);
+        }
+      } else if (wordCount <= 100) {
+        traces = calculateTraces('microcuento', wordCount);
+      } else {
+        traces = calculateTraces('drabble', wordCount);
+      }
       break;
 
     case 'hilo':
@@ -279,6 +293,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de usuario inválido" });
       }
 
+      // Update user stats first to ensure fresh data
+      await storage.updateUserStats(userId);
+
       const user = await db
         .select({
           id: users.id,
@@ -291,6 +308,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           facebookLink: users.facebookLink,
           rank: users.rank,
           totalTraces: users.totalTraces,
+          totalWords: users.totalWords,
+          totalActivities: users.totalActivities,
           role: users.role,
           createdAt: users.createdAt,
         })
@@ -316,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check user limit (70 users maximum)
       const totalUsers = await db.select({ count: count() }).from(users);
       const userCount = totalUsers[0]?.count || 0;
-      
+
       if (userCount >= 70) {
         return res.status(400).json({ 
           message: "Cupos Cubiertos. Lo lamentamos mucho, este bimestre ya se han llenado todos los cupos disponibles. No te preocupes, puedes estar atento a nuestra página de Facebook para cuando volvamos a abrir cupos o anunciemos cuándo es el próximo bimestre. ¡Esperamos tenerte con nosotros pronto!" 
@@ -835,7 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check if user liked an activity
   app.get("/api/activities/:id/likes/:userId", async (req, res) => {
     try {
-      const activityId = parseInt(req.params.id);
+      const activityId = parseInt(req.params/id);
       const userId = parseInt(req.params.userId);
       const isLiked = await storage.isLikedByUser(activityId, userId);
       res.json({ liked: isLiked });
@@ -1061,6 +1080,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all trace assignments (admin only)
+  app.get("/api/admin/trace-assignments", async (req, res) => {
+    try {
+      const { adminId } = req.query;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions
+      const admin = await storage.getUser(parseInt(adminId as string));
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      const assignments = await storage.getAllTraceAssignments();
+      res.json(assignments);
+    } catch (error: any) {
+      console.error("Error fetching trace assignments:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Admin trace assignment
   app.post("/api/admin/assign-traces", async (req, res) => {
     try {
@@ -1070,9 +1112,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de administrador requerido" });
       }
 
-      // Verify admin permissions
+      // Verify admin permissions - check both role and special signature
       const admin = await storage.getUser(parseInt(adminId));
-      if (!admin || admin.role !== "admin") {
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
         return res.status(403).json({ message: "No tienes permisos de administrador" });
       }
 
@@ -1111,11 +1153,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createNotification({
             userId: parseInt(userId),
             title: "Trazos Asignados",
-            message: `Se te han asignado ${tracesAmount} trazos. Motivo: ${reason}`,
+            content: `Se te han asignado ${tracesAmount} trazos. Motivo: ${reason}`,
             type: "trace_assignment"
           });
         }
+
+        }
+
+      // Create public announcement about trace assignment
+      const userNames = [];
+      for (const userId of selectedUsers) {
+        const user = await storage.getUser(parseInt(userId));
+        if (user) {
+          userNames.push(user.signature);
+        }
       }
+
+      const announcementTitle = "Asignación de Trazos";
+      const announcementContent = `Se han asignado ${tracesAmount} trazos a: ${userNames.join(", ")}.\n\nMotivo: ${reason}`;
+
+      await storage.createAnnouncement({
+        title: announcementTitle,
+        content: announcementContent,
+        authorId: parseInt(adminId),
+      });
 
       res.json({ success: true, assignment });
     } catch (error: any) {
@@ -1134,9 +1195,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de administrador requerido" });
       }
 
-      // Verify admin permissions
+      // Verify admin permissions - check both role and special signature
       const admin = await storage.getUser(parseInt(adminId));
-      if (!admin || admin.role !== "admin") {
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
         return res.status(403).json({ message: "No tienes permisos de administrador" });
       }
 
@@ -1189,9 +1250,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de administrador requerido" });
       }
 
-      // Verify admin permissions
+      // Verify admin permissions - check both role and special signature
       const admin = await storage.getUser(parseInt(adminId));
-      if (!admin || admin.role !== "admin") {
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
         return res.status(403).json({ message: "No tienes permisos de administrador" });
       }
 
@@ -1223,9 +1284,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "ID de administrador requerido" });
       }
 
-      // Verify admin permissions
+      // Verify admin permissions - check both role and special signature
       const admin = await storage.getUser(parseInt(adminId));
-      if (!admin || admin.role !== "admin") {
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
         return res.status(403).json({ message: "No tienes permisos de administrador" });
       }
 
@@ -1273,7 +1334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const totalUsers = await db.select({ count: count() }).from(users);
       const userCount = totalUsers[0]?.count || 0;
-      
+
       res.json({ 
         totalUsers: userCount,
         availableSlots: Math.max(0, 70 - userCount),
@@ -1281,6 +1342,268 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Error getting user count:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Refresh all users statistics
+  app.post("/api/admin/refresh-all-stats", async (req, res) => {
+    try {
+      const { adminId } = req.body;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions - check both role and special signature
+      const admin = await storage.getUser(parseInt(adminId));
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      // Get all users
+      const allUsers = await db.select({ id: users.id }).from(users);
+      let updatedUsers = 0;
+
+      console.log(`Starting bulk stats refresh for ${allUsers.length} users`);
+
+      // Update stats for each user
+      for (const user of allUsers) {
+        try {
+          await storage.updateUserStats(user.id);
+          updatedUsers++;
+          console.log(`Updated stats for user ${user.id} (${updatedUsers}/${allUsers.length})`);
+        } catch (error) {
+          console.error(`Error updating stats for user ${user.id}:`, error);
+        }
+      }
+
+      console.log(`Bulk stats refresh completed: ${updatedUsers}/${allUsers.length} users updated`);
+
+      res.json({ 
+        success: true, 
+        message: `Estadísticas actualizadas para ${updatedUsers} de ${allUsers.length} usuarios`,
+        updatedUsers,
+        totalUsers: allUsers.length
+      });
+    } catch (error: any) {
+      console.error("Error refreshing all user stats:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Support tickets routes
+  app.post("/api/support/tickets", async (req, res) => {
+    try {
+      const ticketData = req.body;
+
+      const newTicket = await db.insert(supportTickets).values({
+        type: ticketData.type,
+        subject: ticketData.subject,
+        description: ticketData.description,
+        email: ticketData.email || null,
+        isAnonymous: ticketData.isAnonymous || false,
+        status: "pending",
+      }).returning();
+
+      // Notificar a todos los administradores sobre el nuevo ticket
+      await PushNotificationService.sendNotificationToAdmins({
+        title: "Nuevo Ticket de Soporte",
+        body: `Nuevo ${ticketData.type}: ${ticketData.subject}`,
+        type: "support_ticket",
+        url: "/admin"
+      });
+
+      res.json({ success: true, ticket: newTicket[0] });
+    } catch (error: any) {
+      console.error("Error creating support ticket:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get all support tickets (admin only)
+  app.get("/api/admin/support/tickets", async (req, res) => {
+    try {
+      const { adminId } = req.query;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions
+      const admin = await storage.getUser(parseInt(adminId as string));
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      const tickets = await db
+        .select()
+        .from(supportTickets)
+        .orderBy(desc(supportTickets.createdAt));
+
+      res.json(tickets);
+    } catch (error: any) {
+      console.error("Error fetching support tickets:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Update support ticket (admin only)
+  app.put("/api/admin/support/tickets/:id", async (req, res) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const { adminId, status, adminResponse } = req.body;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions
+      const admin = await storage.getUser(parseInt(adminId));
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      const updateData: any = { status };
+      if (adminResponse) {
+        updateData.adminResponse = adminResponse;
+      }
+      if (status === "resolved") {
+        updateData.resolvedAt = new Date();
+      }
+
+      const [updatedTicket] = await db
+        .update(supportTickets)
+        .set(updateData)
+        .where(eq(supportTickets.id, ticketId))
+        .returning();
+
+      res.json({ success: true, ticket: updatedTicket });
+    } catch (error: any) {
+      console.error("Error updating support ticket:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Clean duplicate bonuses endpoint
+  app.post("/api/admin/clean-duplicate-bonuses", async (req, res) => {
+    try {
+      const { adminId } = req.body;
+
+      if (!adminId) {
+        return res.status(400).json({ message: "ID de administrador requerido" });
+      }
+
+      // Verify admin permissions - check both role and special signature
+      const admin = await storage.getUser(parseInt(adminId));
+      if (!admin || (admin.role !== "admin" && admin.signature !== "#INELUDIBLE")) {
+        return res.status(403).json({ message: "No tienes permisos de administrador" });
+      }
+
+      // Execute cleanup query
+      await db.execute(sql`
+        WITH ranked_bonuses AS (
+          SELECT 
+            id,
+            user_id,
+            ROW_NUMBER() OVER (PARTITION BY user_id, type ORDER BY created_at ASC) as rn
+          FROM bonus_history 
+          WHERE type = 'registration'
+        )
+        DELETE FROM bonus_history 
+        WHERE id IN (
+          SELECT id FROM ranked_bonuses WHERE rn > 1
+        )
+      `);
+
+      // Get remaining count
+      const remainingBonuses = await db.execute(sql`
+        SELECT user_id, COUNT(*) as bonus_count 
+        FROM bonus_history 
+        WHERE type = 'registration' 
+        GROUP BY user_id 
+        ORDER BY user_id
+      `);
+
+      // Refresh all user stats after cleanup
+      const allUsers = await db.select({ id: users.id }).from(users);
+      for (const user of allUsers) {
+        try {
+          await storage.updateUserStats(user.id);
+        } catch (error) {
+          console.error(`Error updating stats for user ${user.id}:`, error);
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Bonus duplicados eliminados y estadísticas actualizadas",
+        remainingBonuses: remainingBonuses.rows
+      });
+    } catch (error: any) {
+      console.error("Error cleaning duplicate bonuses:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Calendar events routes
+  app.get("/api/calendar-events", async (req, res) => {
+    try {
+      const events = await storage.getAllCalendarEvents();
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/calendar-events", async (req, res) => {
+    try {
+      // Assuming insertCalendarEventSchema is defined in @shared/schema
+      const eventData = req.body; //insertCalendarEventSchema.parse(req.body);
+      const event = await storage.createCalendarEvent(eventData);
+      res.json(event);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/calendar-events/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const eventData = req.body;
+      const event = await storage.updateCalendarEvent(id, eventData);
+      res.json(event);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/calendar-events/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCalendarEvent(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Auto-publish scheduled events
+  app.post("/api/calendar-events/auto-publish", async (req, res) => {
+    try {
+      const publishedCount = await storage.autoPublishScheduledEvents();
+      res.json({ publishedCount });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Support tickets routes
+  app.get("/api/support/tickets", async (req, res) => {
+    try {
+      const tickets = await storage.getAllSupportTickets();
+      res.json(tickets);
+    } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });

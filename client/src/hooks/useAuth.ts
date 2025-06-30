@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { User } from "@shared/schema";
 
 export function useAuth() {
@@ -7,12 +7,17 @@ export function useAuth() {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  const updateUser = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
+  const updateUser = useCallback((userData: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return null;
+      const updatedUser = { ...prev, ...userData };
+      // Store updated user in localStorage
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (user?.id) {
       try {
         const response = await fetch(`/api/users/${user.id}`);
@@ -26,7 +31,7 @@ export function useAuth() {
       }
     }
     return null;
-  };
+  }, [user?.id, updateUser]);
 
   const login = (userData: User) => {
     setUser(userData);
@@ -36,6 +41,12 @@ export function useAuth() {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    // Clear all localStorage items related to the app
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('react-query') || key.includes('notifications')) {
+        localStorage.removeItem(key);
+      }
+    });
   };
 
   return { user, login, updateUser, refreshUser, logout };

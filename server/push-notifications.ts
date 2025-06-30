@@ -1,4 +1,3 @@
-
 import { storage } from "./storage";
 
 interface NotificationPayload {
@@ -67,11 +66,11 @@ export class PushNotificationService {
   static async sendNotificationToAdmins(payload: NotificationPayload) {
     try {
       const admins = await storage.getAdminUsers();
-      
+
       const promises = admins.map(admin => 
         this.sendNotificationToUser(admin.id, payload)
       );
-      
+
       await Promise.allSettled(promises);
       return true;
     } catch (error) {
@@ -83,7 +82,7 @@ export class PushNotificationService {
   static async broadcastNotification(payload: NotificationPayload) {
     try {
       const users = await storage.getAllUsers();
-      
+
       // Send in batches to avoid overwhelming the system
       const batchSize = 100;
       for (let i = 0; i < users.length; i += batchSize) {
@@ -91,15 +90,15 @@ export class PushNotificationService {
         const promises = batch.map(user => 
           this.sendNotificationToUser(user.id, payload)
         );
-        
+
         await Promise.allSettled(promises);
-        
+
         // Small delay between batches
         if (i + batchSize < users.length) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
-      
+
       console.log(`Broadcast notification sent to ${users.length} users`);
       return true;
     } catch (error) {
@@ -112,7 +111,7 @@ export class PushNotificationService {
     try {
       // In a real implementation, you would use a library like web-push
       // For now, we'll simulate the push notification
-      
+
       const pushPayload = JSON.stringify({
         title: payload.title,
         body: payload.body,

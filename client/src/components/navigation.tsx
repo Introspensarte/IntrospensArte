@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, User, Bell } from "lucide-react";
+import { LogOut, User, Bell, HelpCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
@@ -10,14 +10,10 @@ export default function Navigation() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
-  // Force re-render when user changes
+  // Clean up notifications query when user changes
   useEffect(() => {
-    // Force component re-render by updating the DOM
-    const forceUpdate = () => {
-      // This will trigger a re-render of the entire navigation
-    };
-    forceUpdate();
-  }, [user]);
+    // This effect will run when user changes, helping with re-renders
+  }, [user?.id]);
 
   const { data: notifications = [] } = useQuery({
     queryKey: [`/api/users/${user?.id}/notifications`],
@@ -32,7 +28,12 @@ export default function Navigation() {
 
   const handleLogout = () => {
     logout();
-    window.location.href = "/";
+    // Clear any cached data
+    localStorage.clear();
+    // Force navigation to landing page
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 100);
   };
 
   // Don't show navigation on landing page
@@ -81,6 +82,16 @@ export default function Navigation() {
                       {unreadNotifications.length}
                     </Badge>
                   )}
+                </Button>
+              </Link>
+              <Link href="/support">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-light-gray hover:text-white hover:bg-medium-gray/20 p-2"
+                  title="Soporte"
+                >
+                  <HelpCircle className="h-4 w-4" />
                 </Button>
               </Link>
               <Button 

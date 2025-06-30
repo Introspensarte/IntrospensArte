@@ -6,6 +6,17 @@ import {
   plannedActivities,
   notifications,
   bonusHistory,
+  supportTickets,
+  calendarEvents,
+  insertUserSchema,
+  insertActivitySchema,
+  insertNewsSchema,
+  insertAnnouncementSchema,
+  insertPlannedActivitySchema,
+  insertNotificationSchema,
+  insertBonusHistorySchema,
+  insertSupportTicketSchema,
+  insertCalendarEventSchema,
   type User,
   type Activity,
   type News,
@@ -13,6 +24,8 @@ import {
   type PlannedActivity,
   type Notification,
   type BonusHistory,
+  type SupportTicket,
+  type CalendarEvent,
   type InsertUser,
   type InsertActivity,
   type InsertNews,
@@ -20,9 +33,11 @@ import {
   type InsertPlannedActivity,
   type InsertNotification,
   type InsertBonusHistory,
+  type InsertSupportTicket,
+  type InsertCalendarEvent,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, lte, ne, isNotNull, lt } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -66,6 +81,17 @@ export interface IStorage {
   // Bonus History operations
   createBonusHistory(data: InsertBonusHistory): Promise<BonusHistory>;
   getUserBonusHistory(userId: number): Promise<BonusHistory[]>;
+
+    // Calendar Events
+  getAllCalendarEvents(): Promise<CalendarEvent[]>;
+  createCalendarEvent(eventData: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(id: number, eventData: Partial<CalendarEvent>): Promise<CalendarEvent>;
+  deleteCalendarEvent(id: number): Promise<void>;
+  autoPublishScheduledEvents(): Promise<number>;
+
+  // Support Tickets
+  // Support Tickets
+  moveExpiredActivitiesToTardia(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -107,7 +133,7 @@ export class DatabaseStorage implements IStorage {
     await this.createNotification({
       userId: user.id,
       title: "¡Bienvenido a Introspens/arte!",
-      message: "Te has registrado exitosamente en nuestra comunidad artística.",
+      content: "Te has registrado exitosamente en nuestra comunidad artística.",
     });
 
     return user;
@@ -141,9 +167,20 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Filtrar valores undefined y null para evitar el error "No values to set"
+    const filteredUpdates = Object.fromEntries(
+      Object.entries(cleanUpdates).filter(([_, value]) => value !== undefined)
+    );
+
+    if (Object.keys(filteredUpdates).length === 0) {
+      // Si no hay valores para actualizar, devolver el usuario actual
+      const [currentUser] = await db.select().from(users).where(eq(users.id, id));
+      return currentUser;
+    }
+
     const [updatedUser] = await db
       .update(users)
-      .set(cleanUpdates)
+      .set(filteredUpdates)
       .where(eq(users.id, id))
       .returning();
 
@@ -234,50 +271,57 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async updateUserStats(userId: number): Promise<void> {
+  async updateUserStats(userId: number) {
     try {
-      // Verify user exists first
-      const user = await this.getUser(userId);
-      if (!user) {
-        console.warn(`User ${userId} not found, skipping stats update`);
-        return;
-      }
+      console.log(`Updating stats for user ${userId}`);
 
-      // Get fresh data from database to ensure accuracy
+      // Get all user activities
       const userActivities = await db
         .select({
-          id: activities.id,
           traces: activities.traces,
-          word_count: activities.word_count,
+          wordCount: activities.word_count,
         })
         .from(activities)
         .where(eq(activities.userId, userId));
 
-      // Sum up the traces and words from activities
-      const activityTraces = userActivities.reduce((sum, activity) => sum + (activity.traces || 0), 0);
-      const totalWords = userActivities.reduce((sum, activity) => sum + (activity.word_count || 0), 0);
+      // Calculate totals from activities
+      const totalTracesFromActivities = userActivities.reduce((sum, activity) => sum + (activity.traces || 0), 0);
+      const totalWords = userActivities.reduce((sum, activity) => sum + (activity.wordCount || 0), 0);
       const totalActivities = userActivities.length;
 
-      // Add initial 50 traces to activity traces (given at registration)
-      const totalTraces = activityTraces + 50;
+      console.log(`User ${userId} activity stats: ${totalActivities} activities, ${totalWords} words, ${totalTracesFromActivities} traces from activities`);
 
-      // Don't automatically update rank - only admins can change ranks
-      // Update user stats with current database values (keeping existing rank)
-      const [updatedUser] = await db
+      // Get bonus history
+      const bonusHistory = await this.getUserBonusHistory(userId);
+      console.log(`Retrieved ${bonusHistory.length} bonus history entries for user ${userId}`);
+
+      // Calculate total bonus traces
+      const totalBonusTraces = bonusHistory.reduce((sum, bonus) => sum + (bonus.traces || 0), 0);
+
+      // Total traces = traces from activities + bonus traces
+      const totalTraces = totalTracesFromActivities + totalBonusTraces;
+
+      console.log(`User ${userId} final stats: ${totalTraces} traces (${totalTracesFromActivities} from activities + ${totalBonusTraces} from bonuses), ${totalWords} words, ${totalActivities} activities`);
+
+      // Update user with calculated stats (NO CAMBIAR RANK - solo admin puede hacerlo)
+      const updatedUser = await db
         .update(users)
         .set({
-          totalTraces,
-          totalWords,
-          totalActivities,
+          totalTraces: totalTraces,
+          totalWords: totalWords,
+          totalActivities: totalActivities,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId))
-        .returning();
+        .returning()
+        .then(rows => rows[0]);
 
-      console.log(`Updated stats for user ${userId}: ${totalTraces} traces (${activityTraces} from activities + 50 initial), ${totalWords} words, ${totalActivities} activities, rank: ${rank}`);
+      console.log(`Updated stats for user ${userId}: ${totalTraces} traces (${totalTracesFromActivities} from activities + ${totalBonusTraces} from bonuses), ${totalWords} words, ${totalActivities} activities`);
+
+      return updatedUser;
     } catch (error) {
-      console.error(`Error updating stats for user ${userId}:`, error);
-      // Don't throw the error to prevent cascade failures
+      console.error(`Error updating user stats for user ${userId}:`, error);
+      throw error;
     }
   }
 
@@ -423,6 +467,7 @@ export class DatabaseStorage implements IStorage {
         album: plannedActivities.album,
         deadline: plannedActivities.deadline,
         facebookLink: plannedActivities.facebookLink,
+        activityCode: plannedActivities.activityCode,
         authorId: plannedActivities.authorId,
         createdAt: plannedActivities.createdAt,
         author: users,
@@ -449,13 +494,13 @@ export class DatabaseStorage implements IStorage {
     await db.update(notifications).set({ read: true }).where(eq(notifications.id, id));
   }
 
-  async createNotificationForAllUsers(title: string, message: string): Promise<void> {
+  async createNotificationForAllUsers(title: string, content: string): Promise<void> {
     const allUsers = await this.getAllUsers();
 
     const notificationData = allUsers.map(user => ({
       userId: user.id,
       title,
-      message,
+      content,
     }));
 
     await db.insert(notifications).values(notificationData);
@@ -643,12 +688,13 @@ export class DatabaseStorage implements IStorage {
   }): Promise<any> {
     try {
       // Create the assignment record
-      const [assignment] = await db.execute(sql`
-        INSERT INTO trace_assignments (title, date, reason, traces_amount, admin_id, created_at)
+      const result = await db.execute(sql`
+        INSERT INTO trace_assignments (title, assignment_date, reason, traces_amount, admin_id, created_at)
         VALUES (${assignmentData.title}, ${assignmentData.date}, ${assignmentData.reason}, ${assignmentData.tracesAmount}, ${assignmentData.adminId}, NOW())
         RETURNING *
       `);
 
+      const assignment = result.rows[0];
       const assignmentId = assignment.id;
 
       // Create user-assignment relationships
@@ -663,6 +709,29 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error creating trace assignment:", error);
       throw error;
+    }
+  }
+
+  async getAllTraceAssignments(): Promise<any[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT 
+          ta.*,
+          u.signature as admin_signature,
+          array_agg(tau.user_id) as user_ids,
+          array_agg(uu.signature) as user_signatures
+        FROM trace_assignments ta
+        LEFT JOIN users u ON ta.admin_id = u.id
+        LEFT JOIN trace_assignment_users tau ON ta.id = tau.assignment_id
+        LEFT JOIN users uu ON tau.user_id = uu.id
+        GROUP BY ta.id, u.signature
+        ORDER BY ta.created_at DESC
+      `);
+      
+      return result.rows;
+    } catch (error) {
+      console.error("Error getting trace assignments:", error);
+      return [];
     }
   }
 
@@ -713,23 +782,43 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  async moveExpiredActivitiesToTardia(): Promise<void> {
+  async moveExpiredActivitiesToTardia(): Promise<number> {
     const now = new Date();
-    await db
-      .update(plannedActivities)
-      .set({ album: "actividad-tardia" })
-      .where(
-        and(
-          eq(plannedActivities.arista, "express"),
-          eq(plannedActivities.album, "actividad-express"),
-          sql`${plannedActivities.deadline} < ${now}`
-        )
-      );
+
+    // Find express activities that have expired
+    const expiredActivities = await db
+      .select()
+      .from(plannedActivities)
+      .where(and(
+        eq(plannedActivities.arista, "actividades-express"),
+        ne(plannedActivities.album, "actividad-tardia"),
+        isNotNull(plannedActivities.deadline),
+        lt(plannedActivities.deadline, now)
+      ));
+
+    console.log(`Found ${expiredActivities.length} expired activities to move`);
+
+    // Move each expired activity to actividad-tardia
+    for (const activity of expiredActivities) {
+      await db
+        .update(plannedActivities)
+        .set({ 
+          album: "actividad-tardia",
+          deadline: null // Remove deadline since it's now in tardia
+        })
+        .where(eq(plannedActivities.id, activity.id));
+
+      console.log(`Moved activity "${activity.title}" to actividad-tardia`);
+    }
+
+    return expiredActivities.length;
   }
 
   async deletePlannedActivity(id: number): Promise<void> {
     await db.delete(plannedActivities).where(eq(plannedActivities.id, id));
   }
+
+  // Rangos solo se asignan manualmente por admins
 
   // Bonus History methods
   async createBonusHistory(data: InsertBonusHistory): Promise<BonusHistory> {
@@ -768,6 +857,103 @@ export class DatabaseStorage implements IStorage {
       console.error("Error getting user bonus history:", error);
       return [];
     }
+  }
+
+  // Calendar Events
+  async getAllCalendarEvents(): Promise<CalendarEvent[]> {
+    const result = await db.select().from(calendarEvents)
+      .leftJoin(users, eq(calendarEvents.authorId, users.id))
+      .orderBy(desc(calendarEvents.scheduledDate));
+
+    return result.map(row => ({
+      ...row.calendar_events,
+      author: row.users
+    }));
+  }
+
+  async createCalendarEvent(eventData: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [event] = await db.insert(calendarEvents).values(eventData).returning();
+    return event;
+  }
+
+  async updateCalendarEvent(id: number, eventData: Partial<CalendarEvent>): Promise<CalendarEvent> {
+    const [event] = await db.update(calendarEvents)
+      .set({ ...eventData, updatedAt: new Date() })
+      .where(eq(calendarEvents.id, id))
+      .returning();
+    return event;
+  }
+
+  async deleteCalendarEvent(id: number): Promise<void> {
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+  }
+
+  async autoPublishScheduledEvents(): Promise<number> {
+    // Get scheduled events that should be published
+    const eventsToPublish = await db.select().from(calendarEvents)
+      .where(
+        and(
+          eq(calendarEvents.status, 'scheduled'),
+          lte(calendarEvents.scheduledDate, new Date()),
+          eq(calendarEvents.visibility, true)
+        )
+      );
+
+    let publishedCount = 0;
+
+    for (const event of eventsToPublish) {
+      try {
+        // Publish based on event type
+        if (event.type === 'news') {
+          await db.insert(news).values({
+            title: event.title,
+            content: event.content,
+            authorId: event.authorId,
+            createdAt: event.scheduledDate
+          });
+        } else if (event.type === 'announcement') {
+          await db.insert(announcements).values({
+            title: event.title,
+            content: event.content,
+            authorId: event.authorId,
+            createdAt: event.scheduledDate
+          });
+        } else if (event.type === 'activity') {
+          await db.insert(plannedActivities).values({
+            title: event.title,
+            description: event.description || event.content,
+            arista: event.arista || 'General',
+            album: event.album || 'General',
+            authorId: event.authorId,
+            deadline: event.deadline,
+            facebookLink: event.facebookLink,
+            createdAt: event.scheduledDate
+          });
+        }
+
+        // Update event status
+        await db.update(calendarEvents)
+          .set({
+            status: 'published',
+            publishedDate: new Date(),
+            autoPublished: true,
+            updatedAt: new Date()
+          })
+          .where(eq(calendarEvents.id, event.id));
+
+        publishedCount++;
+      } catch (error) {
+        console.error(`Error publishing event ${event.id}:`, error);
+      }
+    }
+
+    return publishedCount;
+  }
+
+  // Support Tickets
+  async getAllSupportTickets(): Promise<SupportTicket[]> {
+    const result = await db.select().from(supportTickets).orderBy(desc(supportTickets.createdAt));
+    return result;
   }
 }
 

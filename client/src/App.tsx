@@ -24,6 +24,8 @@ import Systems from "@/pages/systems";
 import Rules from "@/pages/rules";
 import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
+import { lazy } from "react";
+import Support from "@/pages/support";
 
 function Router() {
   return (
@@ -49,6 +51,7 @@ function Router() {
         <Route path="/announcements" component={Announcements} />
         <Route path="/notifications" component={Notifications} />
         <Route path="/admin" component={Admin} />
+        <Route path="/support" component={Support} />
         <Route component={NotFound} />
       </Switch>
     </div>

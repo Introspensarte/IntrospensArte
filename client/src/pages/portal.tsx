@@ -33,7 +33,7 @@ function getRankColor(rank: string) {
 }
 
 export default function Portal() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, refreshUser } = useAuth();
 
   const { data: stats } = useQuery({
     queryKey: ["/api/rankings"],
@@ -43,19 +43,49 @@ export default function Portal() {
     refetchInterval: 30000, // Auto-refresh every 30 seconds
   });
 
-  // Auto-refresh user data to keep stats updated
+  // Force frequent refresh to ensure fresh data
   const { data: currentUser } = useQuery({
     queryKey: [`/api/users/${user?.id}`],
     enabled: !!user?.id,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 30000,
-    onSuccess: (userData) => {
-      if (userData && updateUser) {
-        updateUser(userData);
-      }
-    },
+    refetchInterval: 5000, // Refresh every 5 seconds
+    staleTime: 0, // Always consider data stale
   });
+
+  // Update user context when fresh data arrives
+  useEffect(() => {
+    if (currentUser && currentUser.id === user?.id) {
+      // Only update if data has actually changed
+      if (JSON.stringify(currentUser) !== JSON.stringify(user)) {
+        updateUser(currentUser);
+      }
+    }
+  }, [currentUser, user, updateUser]);
+
+  // Update user stats when component mounts
+  useEffect(() => {
+    if (user?.id) {
+      refreshUser();
+    }
+  }, [user?.id, refreshUser]);
+
+  // Removed problematic useEffect that was causing infinite re-renders
+  useEffect(() => {
+    const refreshUserData = async () => {
+      if (user?.id) {
+        try {
+          const response = await apiRequest("GET", `/api/users/${user.id}`, {});
+          const userData = await response.json();
+          updateUser(userData);
+        } catch (error) {
+          console.error("Error refreshing user data:", error);
+        }
+      }
+    };
+
+    refreshUserData();
+  }, [user?.id]); // Remove updateUser from dependencies to prevent infinite loop
 
   if (!user) {
     return (
@@ -229,7 +259,7 @@ export default function Portal() {
             <CardContent className="p-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-soft-lavender mb-2">
-                  {user.totalTraces}
+                  {user.totalTraces || 0}
                 </div>
                 <div className="text-light-gray">Trazos totales</div>
               </div>
@@ -240,7 +270,7 @@ export default function Portal() {
             <CardContent className="p-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-soft-lavender mb-2">
-                  {user.totalWords}
+                  {user.totalWords || 0}
                 </div>
                 <div className="text-light-gray">Palabras escritas</div>
               </div>

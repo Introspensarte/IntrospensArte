@@ -72,6 +72,19 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = process.env.PORT || 5000;
+
+  // Auto-publish scheduled events every hour
+  setInterval(async () => {
+    try {
+      const publishedCount = await storage.autoPublishScheduledEvents();
+      if (publishedCount > 0) {
+        console.log(`Auto-published ${publishedCount} scheduled events`);
+      }
+    } catch (error) {
+      console.error('Error in auto-publish cron job:', error);
+    }
+  }, 60 * 60 * 1000); // Every hour
+
   server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });

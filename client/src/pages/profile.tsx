@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { RANKS, MEDALS, ARISTAS, ACTIVITY_TYPES } from "@/lib/constants";
-import { Edit, Trash2, ExternalLink, Edit3 } from "lucide-react";
+import { Plus, Edit, Trash2, ExternalLink, Edit3, RefreshCw } from "lucide-react";
 import type { Activity } from "@shared/schema";
 
 const profileSchema = z.object({
@@ -80,38 +80,24 @@ export default function Profile() {
     queryKey: [`/api/users/${user?.id}/activities?limit=3`],
     enabled: !!user,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: bonusHistory = [] } = useQuery<any[]>({
     queryKey: [`/api/users/${user?.id}/bonus-history`],
     enabled: !!user,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    refetchOnWindowFocus: false,
   });
 
-  // Auto-refresh user data to keep stats updated
+  // Only refresh user data when explicitly requested
   const { data: currentUser } = useQuery({
     queryKey: [`/api/users/${user?.id}`],
     enabled: !!user?.id,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    refetchInterval: 5000, // More frequent refresh to catch admin changes
-    onSuccess: (userData) => {
-      if (userData && updateUser) {
-        updateUser(userData);
-      }
-    },
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
-
-  // Additional effect to refresh user data when component mounts
-  useEffect(() => {
-    if (user?.id) {
-      refreshUser();
-    }
-  }, []);
 
   const refreshStatsMutation = useMutation({
     mutationFn: async () => {
@@ -221,14 +207,14 @@ export default function Profile() {
         title: "Actividad actualizada",
         description: "La actividad ha sido actualizada exitosamente",
       });
-      
+
       // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities`] });
       queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/activities?limit=3`] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rankings"] });
       queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}`] });
-      
+
       setIsEditDialogOpen(false);
       setEditingActivity(null);
     },
@@ -270,6 +256,8 @@ export default function Profile() {
       medal: user?.medal || "",
     },
   });
+
+  
 
   if (!user) {
     return (
@@ -487,336 +475,336 @@ export default function Profile() {
                               <Input
                                 {...field}
                                 className="bg-dark-graphite border-medium-gray/30 text-white"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    {/* Rank field - only editable by admins */}
-                    <FormField
-                      control={form.control}
-                      name="rank"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-light-gray">Rango</FormLabel>
-                          {user.role === "admin" ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="bg-dark-graphite border-medium-gray/30 text-white">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {RANKS.map((rank) => (
-                                  <SelectItem key={rank} value={rank}>
-                                    {rank}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Input
-                              value={field.value}
-                              disabled
-                              className="bg-medium-gray/20 border-medium-gray/30 text-medium-gray cursor-not-allowed"
                             />
-                          )}
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
-                    <Button
-                      type="submit"
-                      disabled={updateMutation.isPending}
-                      className="w-full glow-button"
-                    >
-                      {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
-                    </Button>
-                  </form>
-                </Form>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{user.fullName}</h3>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="secondary" className="bg-soft-lavender/20 text-soft-lavender">
-                        {user.signature}
-                      </Badge>
-                      {user.role === "admin" && (
-                        <Badge variant="destructive" className="bg-yellow-500/50 text-yellow-300">
-                          Admin
-                        </Badge>
-                      )}
-                      <Badge className={getRankColor(user.rank)}>{user.rank}</Badge>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm">
-                    <p><span className="text-light-gray">Edad:</span> {user.age} años</p>
-                    <p><span className="text-light-gray">Cumpleaños:</span> {user.birthday}</p>
-                    <p><span className="text-light-gray">Rango:</span> {user.rank}</p>
-                    {userMedal && (
-                      <p><span className="text-light-gray">Medalla:</span> {userMedal}</p>
-                    )}
-                    {user.facebookLink && (
-                      <p>
-                        <span className="text-light-gray">Facebook:</span>{" "}
-                        <a 
-                          href={user.facebookLink} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-soft-lavender hover:text-white transition-colors"
-                        >
-                          Ver perfil
-                        </a>
-                      </p>
-                    )}
-                    <p>
-                      <span className="text-light-gray">Miembro desde:</span>{" "}
-                      {new Date(user.createdAt!).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Statistics */}
-          <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="font-playfair text-2xl">Estadísticas</CardTitle>
-                <Button
-                  onClick={() => refreshStatsMutation.mutate()}
-                  disabled={refreshStatsMutation.isPending}
-                  variant="outline"
-                  size="sm"
-                  className="border-soft-lavender/30 text-soft-lavender hover:bg-soft-lavender/10"
-                >
-                  {refreshStatsMutation.isPending ? "..." : "↻"}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-soft-lavender">{user.totalTraces}</div>
-                  <div className="text-sm text-light-gray">Trazos totales</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-soft-lavender">{user.totalWords}</div>
-                  <div className="text-sm text-light-gray">Palabras</div>
-                </div>
-              </div>
-
-              <div className="text-center mb-6">
-                <div className="text-2xl font-bold text-soft-lavender">{user.totalActivities}</div>
-                <div className="text-sm text-light-gray">Actividades realizadas</div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-white mb-3">Últimas actividades</h4>
-                <div className="space-y-2">
-                  {recentActivities.length > 0 ? (
-                    recentActivities.map((activity) => (
-                      <div key={activity.id} className="p-3 bg-medium-gray/10 rounded-lg">
-                        <div className="font-medium text-white">{activity.name}</div>
-                        <div className="text-sm text-light-gray">
-                          {activity.type} • {activity.wordCount} palabras • {activity.traces} trazos
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-medium-gray text-sm">No hay actividades aún</p>
                   )}
+
+                  {/* Rank field - only editable by admins */}
+                  <FormField
+                    control={form.control}
+                    name="rank"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-light-gray">Rango</FormLabel>
+                        {user.role === "admin" ? (
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="bg-dark-graphite border-medium-gray/30 text-white">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {RANKS.map((rank) => (
+                                <SelectItem key={rank} value={rank}>
+                                  {rank}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            value={field.value}
+                            disabled
+                            className="bg-medium-gray/20 border-medium-gray/30 text-medium-gray cursor-not-allowed"
+                          />
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button
+                    type="submit"
+                    disabled={updateMutation.isPending}
+                    className="w-full glow-button"
+                  >
+                    {updateMutation.isPending ? "Guardando..." : "Guardar cambios"}
+                  </Button>
+                </form>
+              </Form>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">{user.fullName}</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="secondary" className="bg-soft-lavender/20 text-soft-lavender">
+                      {user.signature}
+                    </Badge>
+                    {user.role === "admin" && (
+                      <Badge variant="destructive" className="bg-yellow-500/50 text-yellow-300">
+                        Admin
+                      </Badge>
+                    )}
+                    <Badge className={getRankColor(user.rank)}>{user.rank}</Badge>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-light-gray">Edad:</span> {user.age} años</p>
+                  <p><span className="text-light-gray">Cumpleaños:</span> {user.birthday}</p>
+                  <p><span className="text-light-gray">Rango:</span> {user.rank}</p>
+                  {userMedal && (
+                    <p><span className="text-light-gray">Medalla:</span> {userMedal}</p>
+                  )}
+                  {user.facebookLink && (
+                    <p>
+                      <span className="text-light-gray">Facebook:</span>{" "}
+                      <a 
+                        href={user.facebookLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-soft-lavender hover:text-white transition-colors"
+                      >
+                        Ver perfil
+                      </a>
+                    </p>
+                  )}
+                  <p>
+                    <span className="text-light-gray">Miembro desde:</span>{" "}
+                    {new Date(user.createdAt!).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* My Activities */}
-          <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-1">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="font-playfair text-2xl">Mis Actividades</CardTitle>
-                <Button
-                  onClick={() => setIsEditingActivities(!isEditingActivities)}
-                  variant="outline"
-                  size="sm"
-                  className="border-soft-lavender/30 text-soft-lavender hover:bg-soft-lavender/10"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
+        {/* Statistics */}
+        <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="font-playfair text-2xl">Estadísticas</CardTitle>
+              <Button
+                onClick={() => refreshStatsMutation.mutate()}
+                disabled={refreshStatsMutation.isPending}
+                variant="outline"
+                size="sm"
+                className="border-soft-lavender/30 text-soft-lavender hover:bg-soft-lavender/10"
+              >
+                {refreshStatsMutation.isPending ? "..." : "↻"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-soft-lavender">{user.totalTraces || 0}</div>
+                <div className="text-sm text-light-gray">Trazos totales</div>
               </div>
-            </CardHeader>
-            <CardContent className="max-h-96 overflow-y-auto">
-              {activities.length > 0 ? (
-                <div className="space-y-3">
-                  {activities.map((activity) => (
+              <div className="text-center">
+                <div className="text-2xl font-bold text-soft-lavender">{user.totalWords || 0}</div>
+                <div className="text-sm text-light-gray">Palabras</div>
+              </div>
+            </div>
+
+            <div className="text-center mb-6">
+              <div className="text-2xl font-bold text-soft-lavender">{user.totalActivities || 0}</div>
+              <div className="text-sm text-light-gray">Actividades realizadas</div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-white mb-3">Últimas actividades</h4>
+              <div className="space-y-2">
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((activity) => (
                     <div key={activity.id} className="p-3 bg-medium-gray/10 rounded-lg">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-white text-sm mb-1">{activity.name}</h4>
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            <Badge className={getActivityTypeColor(activity.type)}>
-                              {activity.type}
-                            </Badge>
-                            <Badge className={getAristaColor(activity.arista)}>
-                              {activity.arista.replace('-', ' ')}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-light-gray space-y-1">
-                            <p><span className="text-medium-gray">Álbum:</span> {activity.album}</p>
-                            <p><span className="text-medium-gray">Palabras:</span> {activity.word_count || activity.wordCount || 0} • <span className="text-medium-gray">Trazos:</span> {activity.traces}</p>
-                            <p><span className="text-medium-gray">Fecha:</span> {new Date(activity.date).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        {isEditingActivities && (
-                          <div className="flex flex-col gap-1 ml-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditActivity(activity)}
-                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-1 h-auto"
-                            >
-                              <Edit3 className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteActivity(activity.id!)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-auto"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
+                      <div className="font-medium text-white">{activity.name}</div>
+                      <div className="text-sm text-light-gray">
+                        {activity.type} • {activity.wordCount} palabras • {activity.traces} trazos
                       </div>
-                      {activity.link && (
-                        <a
-                          href={activity.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Ver actividad
-                        </a>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-medium-gray text-sm">No hay actividades aún</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* My Activities */}
+        <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-1">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="font-playfair text-2xl">Mis Actividades</CardTitle>
+              <Button
+                onClick={() => setIsEditingActivities(!isEditingActivities)}
+                variant="outline"
+                size="sm"
+                className="border-soft-lavender/30 text-soft-lavender hover:bg-soft-lavender/10"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="max-h-96 overflow-y-auto">
+            {activities.length > 0 ? (
+              <div className="space-y-3">
+                {activities.map((activity) => (
+                  <div key={activity.id} className="p-3 bg-medium-gray/10 rounded-lg">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-white text-sm mb-1">{activity.name}</h4>
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          <Badge className={getActivityTypeColor(activity.type)}>
+                            {activity.type}
+                          </Badge>
+                          <Badge className={getAristaColor(activity.arista)}>
+                            {activity.arista.replace('-', ' ')}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-light-gray space-y-1">
+                          <p><span className="text-medium-gray">Álbum:</span> {activity.album}</p>
+                          <p><span className="text-medium-gray">Palabras:</span> {activity.word_count || activity.wordCount || 0} • <span className="text-medium-gray">Trazos:</span> {activity.traces}</p>
+                          <p><span className="text-medium-gray">Fecha:</span> {new Date(activity.date).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      {isEditingActivities && (
+                        <div className="flex flex-col gap-1 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditActivity(activity)}
+                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-1 h-auto"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteActivity(activity.id!)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-auto"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-medium-gray text-sm">No tienes actividades aún</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    {activity.link && (
+                      <a
+                        href={activity.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Ver actividad
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-medium-gray text-sm">No tienes actividades aún</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Cronología Bonus */}
-          <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="font-playfair text-2xl">Cronología Bonus</CardTitle>
-            </CardHeader>
-            <CardContent className="max-h-96 overflow-y-auto">
-              {bonusHistory.length > 0 ? (
-                <div className="space-y-3">
-                  {bonusHistory.map((bonus) => (
-                    <div key={bonus.id} className="p-3 bg-gradient-to-r from-gold/10 to-soft-lavender/10 rounded-lg border border-gold/20">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-white text-sm mb-1">{bonus.title}</h4>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge className="bg-gold/20 text-gold">
-                              +{bonus.traces} trazos
-                            </Badge>
-                            <Badge variant="outline" className="text-xs border-medium-gray/30 text-medium-gray">
-                              {bonus.type === 'registration' ? 'Registro' : 
-                               bonus.type === 'birthday' ? 'Cumpleaños' : 
-                               bonus.type === 'admin_assignment' ? 'Admin' : bonus.type}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-light-gray space-y-1">
-                            <p><span className="text-medium-gray">Fecha:</span> {new Date(bonus.createdAt).toLocaleDateString()}</p>
-                            {bonus.reason && (
-                              <p><span className="text-medium-gray">Motivo:</span> {bonus.reason}</p>
-                            )}
-                          </div>
+        {/* Cronología Bonus */}
+        <Card className="bg-black/40 backdrop-blur-sm border-medium-gray/20 lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="font-playfair text-2xl">Cronología Bonus</CardTitle>
+          </CardHeader>
+          <CardContent className="max-h-96 overflow-y-auto">
+            {bonusHistory.length > 0 ? (
+              <div className="space-y-3">
+                {bonusHistory.map((bonus) => (
+                  <div key={bonus.id} className="p-3 bg-gradient-to-r from-gold/10 to-soft-lavender/10 rounded-lg border border-gold/20">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-white text-sm mb-1">{bonus.title}</h4>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-gold/20 text-gold">
+                            +{bonus.traces} trazos
+                          </Badge>
+                          <Badge variant="outline" className="text-xs border-medium-gray/30 text-medium-gray">
+                            {bonus.type === 'registration' ? 'Registro' : 
+                             bonus.type === 'birthday' ? 'Cumpleaños' : 
+                             bonus.type === 'admin_assignment' ? 'Admin' : bonus.type}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-light-gray space-y-1">
+                          <p><span className="text-medium-gray">Fecha:</span> {new Date(bonus.createdAt).toLocaleDateString()}</p>
+                          {bonus.reason && (
+                            <p><span className="text-medium-gray">Motivo:</span> {bonus.reason}</p>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-medium-gray text-sm">No tienes bonificaciones registradas</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-medium-gray text-sm">No tienes bonificaciones registradas</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Activity Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-black/95 border-medium-gray/30">
-            <DialogHeader>
-              <DialogTitle className="font-playfair text-2xl text-white">
-                Editar Actividad
-              </DialogTitle>
-            </DialogHeader>
+      {/* Activity Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-black/95 border-medium-gray/30">
+          <DialogHeader>
+            <DialogTitle className="font-playfair text-2xl text-white">
+              Editar Actividad
+            </DialogTitle>
+          </DialogHeader>
 
-            <Form {...activityEditForm}>
-              <form onSubmit={activityEditForm.handleSubmit(onActivityEditSubmit)} className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <FormField
-                    control={activityEditForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-light-gray">Nombre de la actividad</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="Título de tu obra"
-                            className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+          <Form {...activityEditForm}>
+            <form onSubmit={activityEditForm.handleSubmit(onActivityEditSubmit)} className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <FormField
+                  control={activityEditForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-light-gray">Nombre de la actividad</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="Título de tu obra"
+                          className="bg-dark-graphite border-medium-gray/30 text-white placeholder-medium-gray focus:border-soft-lavender"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={activityEditForm.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-light-gray">Fecha</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="date"
-                            className="bg-dark-graphite border-medium-gray/30 text-white focus:border-soft-lavender"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={activityEditForm.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-light-gray">Fecha</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="date"
+                          className="bg-dark-graphite border-medium-gray/30 text-white focus:border-soft-lavender"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <FormField
-                    control={activityEditForm.control}
-                    name="wordCount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-light-gray">Número de palabras</FormLabel>
+              <div className="grid md:grid-cols-2 gap-4">
+                <FormField
+                  control={activityEditForm.control}
+                  name="wordCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-light-gray">Número de palabras</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -825,7 +813,7 @@ export default function Profile() {
                             value={field.value === undefined ? "" : field.value}
                             onChange={(e) => {
                               const value = e.target.value;
-                              if (value === "") {
+                                                            if (value === "") {
                                 field.onChange(undefined);
                               } else {
                                 const numValue = parseInt(value);

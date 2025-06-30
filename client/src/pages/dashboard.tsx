@@ -95,10 +95,10 @@ function ActivityModal({
             />
           </div>
 
-          {/* Content Section */}
-          <div className="w-1/2 flex flex-col h-[90vh]">
-            {/* Header */}
-            <div className="p-6 border-b border-medium-gray/20">
+          {/* Content Section - Single Scroll */}
+          <div className="w-1/2 h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-soft-lavender/20 rounded-full flex items-center justify-center">
@@ -123,45 +123,51 @@ function ActivityModal({
                 </Button>
               </div>
 
-              <h2 className="text-2xl font-bold text-white mb-2">{activity.name}</h2>
-
-              {/* Metadata */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                <Badge variant="secondary" className={`${getTypeColor(activity.type)} text-xs`}>
-                  {activity.type}
-                </Badge>
-                <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 text-xs">
-                  {activity.arista}
-                </Badge>
-                <Badge variant="secondary" className="bg-green-500/20 text-green-400 text-xs">
-                  {activity.album}
-                </Badge>
-                <Badge variant="secondary" className="bg-soft-lavender/20 text-soft-lavender text-xs">
-                  {activity.traces} trazos
-                </Badge>
-              </div>
+              <h2 className="text-2xl font-bold text-white mb-4">{activity.name}</h2>
 
               <div className="flex items-center text-sm text-medium-gray mb-4">
                 <Calendar className="w-4 h-4 mr-2" />
                 {new Date(activity.date).toLocaleDateString('es-ES')}
               </div>
 
-              <p className="text-light-gray leading-relaxed mb-4">{activity.description}</p>
+              {/* Description */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-white mb-3">Descripción</h4>
+                <p className="text-light-gray leading-relaxed mb-4">{activity.description}</p>
+
+                {/* Tags as hashtags */}
+                <div className="flex flex-wrap gap-1 text-sm mb-4">
+                  <span className={`${getTypeColor(activity.type)} px-2 py-1 rounded-full text-xs`}>
+                    #{activity.type}
+                  </span>
+                  <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full text-xs">
+                    #{activity.arista}
+                  </span>
+                  <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs">
+                    #{activity.album}
+                  </span>
+                  <span className="bg-soft-lavender/20 text-soft-lavender px-2 py-1 rounded-full text-xs">
+                    #{activity.traces}trazos
+                  </span>
+                </div>
+              </div>
 
               {activity.link && (
-                <a
-                  href={activity.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-soft-lavender hover:text-white transition-colors mb-4"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Ver actividad completa
-                </a>
+                <div className="mb-6">
+                  <a
+                    href={activity.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-soft-lavender hover:text-white transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Ver actividad completa
+                  </a>
+                </div>
               )}
 
               {/* Engagement buttons */}
-              <div className="flex items-center space-x-4 pt-4 border-t border-medium-gray/20">
+              <div className="flex items-center space-x-4 mb-6 pb-6 border-b border-medium-gray/20">
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -195,11 +201,9 @@ function ActivityModal({
                   Compartir
                 </Button>
               </div>
-            </div>
 
-            {/* Comments Section */}
-            <div className="flex-1 flex flex-col">
-              <div className="flex-1 overflow-y-auto p-6">
+              {/* Comments Section */}
+              <div className="mb-6">
                 <h4 className="text-lg font-semibold text-white mb-4">Comentarios</h4>
 
                 {isLoading ? (
@@ -209,7 +213,7 @@ function ActivityModal({
                 ) : comments.length === 0 ? (
                   <p className="text-medium-gray text-center py-4">No hay comentarios aún</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4 mb-6">
                     {comments.map((comment: Comment) => (
                       <div key={comment.id} className="flex space-x-3">
                         <div className="w-8 h-8 bg-soft-lavender/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -238,7 +242,7 @@ function ActivityModal({
 
               {/* Add comment */}
               {user && (
-                <div className="p-6 border-t border-medium-gray/20">
+                <div className="border-t border-medium-gray/20 pt-4">
                   <div className="flex space-x-3">
                     <div className="w-8 h-8 bg-soft-lavender/20 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-soft-lavender text-sm font-bold">
@@ -271,6 +275,7 @@ function ActivityModal({
               )}
             </div>
           </div>
+    
         </div>
       </DialogContent>
     </Dialog>
@@ -313,7 +318,7 @@ export default function Dashboard() {
 
             // Use image_url directly or fallback
             let imageUrl = activity.image_url || activity.imageUrl;
-            
+
             // Use fallback image if no valid URL
             if (!imageUrl || imageUrl.trim() === '') {
               imageUrl = 'https://scontent.fpaz4-1.fna.fbcdn.net/v/t39.30808-6/489621375_122142703550426409_3085208440656935630_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=f727a1&_nc_ohc=k3C3nz46gW8Q7kNvwEYXQMV&_nc_oc=AdlXTRXFUrbiz7_hzcNduekaNgHmAeCPpHG_b3rp6XzBiffhfuO7oNx93k1uitgo5XXgdbQoAK9TyLTs8jl1cX5Z&_nc_zt=23&_nc_ht=scontent.fpaz4-1.fna&_nc_gid=25gzNMflzPt7ADWJVLmBQw&oh=00_AfNXDgfInFQk4CqIfy1P4v2_xNYSyNMF68AHIhUVm8ARiw&oe=68620DAA';
